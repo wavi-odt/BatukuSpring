@@ -54,6 +54,12 @@ public class User {
     @Column(length = 100)
     private String country;
 
+    @Column(length = 200)
+    private String location;
+
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
     // Provedor de autenticação: "local", "google", "discord"
     @Column(nullable = false, length = 30)
     private String provider = "local";
@@ -118,6 +124,12 @@ public class User {
 
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }

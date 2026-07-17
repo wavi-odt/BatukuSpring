@@ -34,16 +34,31 @@ public class Track {
     @Column(name = "cover_url", length = 500)
     private String coverUrl;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @ManyToOne
+    @JoinColumn(name = "genre_id")
+    private Genre genre;
+
     @Column(name = "duration_ms")
     private Integer durationMs;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Visibility visibility = Visibility.PUBLIC;
+
+    @Column(name = "is_published", nullable = false)
+    private boolean isPublished = false;
+
+    @Column(name = "is_indexed", nullable = false)
+    private boolean isIndexed = true;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public enum TrackSource {
-        UPLOAD,
-        SPOTIFY_PREVIEW
-    }
+    public enum TrackSource { UPLOAD, SPOTIFY_PREVIEW }
+    public enum Visibility { PUBLIC, PRIVATE, UNLISTED }
 
     public Long getId() { return id; }
 
@@ -68,8 +83,23 @@ public class Track {
     public String getCoverUrl() { return coverUrl; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
 
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public Genre getGenre() { return genre; }
+    public void setGenre(Genre genre) { this.genre = genre; }
+
     public Integer getDurationMs() { return durationMs; }
     public void setDurationMs(Integer durationMs) { this.durationMs = durationMs; }
+
+    public Visibility getVisibility() { return visibility; }
+    public void setVisibility(Visibility visibility) { this.visibility = visibility; }
+
+    public boolean isPublished() { return isPublished; }
+    public void setPublished(boolean published) { isPublished = published; }
+
+    public boolean isIndexed() { return isIndexed; }
+    public void setIndexed(boolean indexed) { isIndexed = indexed; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

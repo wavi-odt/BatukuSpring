@@ -1,9 +1,12 @@
 package org.example.batuku.services;
 
+import org.example.batuku.domain.DiscordAccount;
 import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
+import org.example.batuku.oauth2.DiscordOAuth2UserInfo;
 import org.example.batuku.oauth2.OAuth2UserInfo;
 import org.example.batuku.oauth2.OAuth2UserInfoFactory;
+import org.example.batuku.repository.DiscordAccountRepository;
 import org.example.batuku.repository.RoleRepository;
 import org.example.batuku.repository.UserRepository;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -24,10 +27,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final DiscordAccountRepository discordAccountRepository;
 
-    public CustomOAuth2UserService(UserRepository userRepository, RoleRepository roleRepository) {
+    public CustomOAuth2UserService(UserRepository userRepository,
+                                   RoleRepository roleRepository,
+                                   DiscordAccountRepository discordAccountRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.discordAccountRepository = discordAccountRepository;
     }
 
     @Override
@@ -45,7 +52,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             );
         }
 
-        findOrCreateUser(registrationId, userInfo);
+        User user = findOrCreateUser(registrationId, userInfo);
+        if ("discord".equals(registrationId)) {
+            syncDiscordAccount(user, (DiscordOAuth2UserInfo) userInfo);
+        }
         return oAuth2User;
     }
 
@@ -93,6 +103,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setEnabled(true);
 
         return userRepository.save(user);
+    }
+
+    private void syncDiscordAccount(User user, DiscordOAuth2UserInfo userInfo) {
+        DiscordAccount account = discordAccountRepository.findByUserId(user.getId())
+                .orElseGet(DiscordAccount::new);
+        account.setUser(user);
+        account.setDiscordUserId(userInfo.getId());
+        String discordUsername = userInfo.getDiscordUsername();
+        account.setDiscordUsername(discordUsername != null ? discordUsername : userInfo.getName());
+        discordAccountRepository.save(account);
     }
 
     private String generateUsername(OAuth2UserInfo userInfo) {

@@ -29,6 +29,12 @@ public class ArtistProfile {
     @Column(name = "genre")
     private List<String> genres;
 
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
+    @Column(length = 200)
+    private String location;
+
     @Column(nullable = false)
     private boolean claimed = false;
 
@@ -55,6 +61,12 @@ public class ArtistProfile {
 
     public List<String> getGenres() { return genres; }
     public void setGenres(List<String> genres) { this.genres = genres; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
 
     public boolean isClaimed() { return claimed; }
     public void setClaimed(boolean claimed) { this.claimed = claimed; }

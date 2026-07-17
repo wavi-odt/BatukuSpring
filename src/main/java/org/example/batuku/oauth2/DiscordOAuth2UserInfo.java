@@ -24,6 +24,10 @@ public class DiscordOAuth2UserInfo extends OAuth2UserInfo {
         return (String) attributes.get("email");
     }
 
+    public String getDiscordUsername() {
+        return (String) attributes.get("username");
+    }
+
     @Override
     public String getAvatarUrl() {
         String id = getId();

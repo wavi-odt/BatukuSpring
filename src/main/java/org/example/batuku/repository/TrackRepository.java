@@ -10,4 +10,5 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     boolean existsBySpotifyTrackId(String spotifyTrackId);
     Optional<Track> findBySpotifyTrackId(String spotifyTrackId);
     List<Track> findTop5ByTitleContainingIgnoreCase(String title);
+    List<Track> findTop5ByIsPublishedTrueOrderByCreatedAtDesc();
 }
