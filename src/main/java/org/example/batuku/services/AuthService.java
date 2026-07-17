@@ -1,8 +1,10 @@
 package org.example.batuku.services;
 
+import org.example.batuku.domain.ArtistProfile;
 import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.RegisterRequest;
+import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.RoleRepository;
 import org.example.batuku.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -24,13 +26,16 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ArtistProfileRepository artistProfileRepository;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       ArtistProfileRepository artistProfileRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.artistProfileRepository = artistProfileRepository;
     }
 
     /**
@@ -66,6 +71,19 @@ public class AuthService {
         user.setRoles(Set.of(springRole));   // role do Spring Security
         user.setEnabled(true);
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        if (userRole == User.UserRole.ARTIST) {
+            ArtistProfile profile = new ArtistProfile();
+            profile.setName(saved.getName());
+            profile.setImageUrl(saved.getAvatarUrl());
+            profile.setSpotifyArtistId(null);
+            profile.setSpotifyUrl(null);
+            profile.setClaimed(true);
+            profile.setUser(saved);
+            artistProfileRepository.save(profile);
+        }
+
+        return saved;
     }
 }

@@ -36,6 +36,12 @@ public class JwtUserDetailsService implements UserDetailsService {
         );
     }
 
+    @Transactional
+    public User loadUserEntity(String identifier) {
+        return userRepository.findByEmailOrUsername(identifier)
+                .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado: " + identifier));
+    }
+
     private List<GrantedAuthority> getGrantedAuthorities(Collection<Role> roles) {
         List<GrantedAuthority> authorities = new ArrayList<>();
         for (Role role : roles) {
