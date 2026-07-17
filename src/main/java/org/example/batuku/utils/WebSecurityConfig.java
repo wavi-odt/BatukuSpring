@@ -1,7 +1,9 @@
 package org.example.batuku.utils;
 
+import org.example.batuku.services.CustomOAuth2UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,9 +17,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-// ─── BASEADO NO FICHEIRO DO PROFESSOR ───────────────────────────────
-// Diferença: o allowedOrigin vem do application.properties (mais flexível)
-// e os endpoints públicos incluem /api/auth/register em vez de /api/registo/*
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -26,17 +25,25 @@ public class WebSecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtRequestFilter jwtRequestFilter;
     private final CustomAuthenticationManager customAuthenticationManager;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2FailureHandler;
 
-    // Lê o allowed origin do application.properties
     @Value("${batuku.cors.allowed-origin}")
     private String allowedOrigin;
 
     public WebSecurityConfig(JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
                              JwtRequestFilter jwtRequestFilter,
-                             CustomAuthenticationManager customAuthenticationManager) {
+                             CustomAuthenticationManager customAuthenticationManager,
+                             CustomOAuth2UserService customOAuth2UserService,
+                             OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler,
+                             OAuth2AuthenticationFailureHandler oAuth2FailureHandler) {
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.jwtRequestFilter = jwtRequestFilter;
         this.customAuthenticationManager = customAuthenticationManager;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
+        this.oAuth2FailureHandler = oAuth2FailureHandler;
     }
 
     @Bean
@@ -50,17 +57,23 @@ public class WebSecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // IF_REQUIRED: necessário para o fluxo OAuth2 (state param) — as chamadas à API continuam a usar JWT
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
-                // preflight CORS
-                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                // endpoints públicos
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
-                    "/authenticate",          // login JWT (igual ao professor)
-                    "/api/auth/register"      // registo de novo utilizador
+                    "/authenticate",
+                    "/api/auth/register",
+                    "/oauth2/**",
+                    "/login/oauth2/**"
                 ).permitAll()
-                // tudo o resto requer autenticação
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(ui -> ui.userService(customOAuth2UserService))
+                .successHandler(oAuth2SuccessHandler)
+                .failureHandler(oAuth2FailureHandler)
             );
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);

@@ -33,8 +33,8 @@ public class User {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    // Password armazenada em hash BCrypt (nunca em texto simples)
-    @Column(nullable = false, length = 255)
+    // Password armazenada em hash BCrypt; null para utilizadores OAuth2
+    @Column(length = 255)
     private String password;
 
     // Nome de apresentação do utilizador
@@ -53,6 +53,14 @@ public class User {
     // País do utilizador (opcional)
     @Column(length = 100)
     private String country;
+
+    // Provedor de autenticação: "local", "google", "discord"
+    @Column(nullable = false, length = 30)
+    private String provider = "local";
+
+    // ID do utilizador no provedor OAuth2 (null para contas locais)
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
 
     // Conta ativa? Podemos desativar sem apagar
     @Column(nullable = false)
@@ -110,6 +118,12 @@ public class User {
 
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
+
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
+
+    public String getProviderId() { return providerId; }
+    public void setProviderId(String providerId) { this.providerId = providerId; }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

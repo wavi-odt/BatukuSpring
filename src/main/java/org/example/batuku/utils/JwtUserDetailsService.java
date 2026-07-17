@@ -14,9 +14,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-// ─── BASEADO NO FICHEIRO DO PROFESSOR — só muda o repositório usado ──
-// O professor usava UserRepository da sua app; aqui usamos o do Batuku.
-// A lógica é exatamente a mesma.
 @Service
 public class JwtUserDetailsService implements UserDetailsService {
 

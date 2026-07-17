@@ -29,8 +29,12 @@ public class CustomAuthenticationManager implements AuthenticationManager {
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
 
-        User user = userRepo.findByEmail(authentication.getName())
-                .orElseThrow(() -> new BadCredentialsException("Wrong Email"));
+        User user = userRepo.findByEmailOrUsername(authentication.getName())
+                .orElseThrow(() -> new BadCredentialsException("Wrong Email or Username"));
+
+        if (user.getPassword() == null) {
+            throw new BadCredentialsException("Esta conta usa login OAuth2 (Google/Discord). Usa o botão correspondente.");
+        }
 
         if (!passwordEncoder.matches(authentication.getCredentials().toString(), user.getPassword())) {
             throw new BadCredentialsException("Wrong Password");

@@ -1,0 +1,8 @@
+target/
+*.class
+*.log
+hs_err_pid*.log
+uploads/
+.idea/
+*.iml
+.env

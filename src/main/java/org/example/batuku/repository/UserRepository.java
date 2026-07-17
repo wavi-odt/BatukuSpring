@@ -22,4 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Login flexível: aceita email ou username num único query
     @org.springframework.data.jpa.repository.Query("SELECT u FROM User u WHERE u.email = :identifier OR u.username = :identifier")
     Optional<User> findByEmailOrUsername(@org.springframework.data.repository.query.Param("identifier") String identifier);
+
+    // Pesquisa por provedor OAuth2 + ID externo
+    Optional<User> findByProviderAndProviderId(String provider, String providerId);
 }
