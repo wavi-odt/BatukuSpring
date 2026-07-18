@@ -28,4 +28,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByProviderAndProviderId(String provider, String providerId);
 
     List<User> findTop5ByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(String name, String username);
+
+    long countByUserRole(User.UserRole userRole);
 }

@@ -4,32 +4,38 @@ import org.example.batuku.domain.ArtistProfile;
 import org.example.batuku.domain.Track;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.TrackRepository;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class ArtistProfileService {
 
+    private static final Logger log = LoggerFactory.getLogger(ArtistProfileService.class);
+
     private final ArtistProfileRepository artistProfileRepository;
     private final SpotifyClient spotifyClient;
     private final TrackRepository trackRepository;
-    private final String market;
 
     public ArtistProfileService(ArtistProfileRepository artistProfileRepository,
                                 SpotifyClient spotifyClient,
-                                TrackRepository trackRepository,
-                                @Value("${batuku.spotify.market}") String market) {
+                                TrackRepository trackRepository) {
         this.artistProfileRepository = artistProfileRepository;
         this.spotifyClient = spotifyClient;
         this.trackRepository = trackRepository;
-        this.market = market;
     }
 
     public List<SpotifyClient.SpotifyArtist> search(String query) {
         return spotifyClient.searchArtists(query, 5);
+    }
+
+    public Set<String> findImportedIds(List<String> spotifyIds) {
+        return artistProfileRepository.findImportedSpotifyIds(spotifyIds);
     }
 
     @Transactional
@@ -52,8 +58,14 @@ public class ArtistProfileService {
     }
 
     private void importTopTracks(ArtistProfile profile) {
-        List<SpotifyClient.SpotifyTrack> tracks =
-                spotifyClient.getTopTracks(profile.getSpotifyArtistId(), market);
+        List<SpotifyClient.SpotifyTrack> tracks;
+        try {
+            tracks = spotifyClient.getTopTracks(profile.getSpotifyArtistId());
+        } catch (HttpClientErrorException e) {
+            log.warn("Failed to fetch top tracks for artist {}: {} {}",
+                    profile.getSpotifyArtistId(), e.getStatusCode(), e.getMessage());
+            return;
+        }
 
         tracks.stream()
                 .filter(t -> t.previewUrl() != null)

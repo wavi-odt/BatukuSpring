@@ -113,6 +113,12 @@ public class SpotifyClient {
     private record SpotifySearchResponse(SpotifyArtistPage artists) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    private record SpotifyTrackPage(List<SpotifyTrack> items) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record SpotifyTrackSearchResponse(SpotifyTrackPage tracks) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record SpotifyTrack(
             String id,
             String name,
@@ -132,12 +138,22 @@ public class SpotifyClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record SpotifyTopTracksResponse(List<SpotifyTrack> tracks) {}
 
-    public List<SpotifyTrack> getTopTracks(String artistId, String market) {
+    public List<SpotifyTrack> getTopTracks(String artistId) {
         SpotifyTopTracksResponse response = restClient.get()
-                .uri("https://api.spotify.com/v1/artists/{id}/top-tracks?market={market}", artistId, market)
+                .uri("https://api.spotify.com/v1/artists/{id}/top-tracks", artistId)
                 .header("Authorization", "Bearer " + accessToken())
                 .retrieve()
                 .body(SpotifyTopTracksResponse.class);
         return response.tracks();
+    }
+
+    public List<SpotifyTrack> searchTracksByArtistName(String artistName, int limit) {
+        String query = "artist:\"" + artistName + "\"";
+        SpotifyTrackSearchResponse response = restClient.get()
+                .uri("https://api.spotify.com/v1/search?q={q}&type=track&limit={limit}", query, limit)
+                .header("Authorization", "Bearer " + accessToken())
+                .retrieve()
+                .body(SpotifyTrackSearchResponse.class);
+        return response.tracks().items();
     }
 }

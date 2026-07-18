@@ -1,8 +1,8 @@
 package org.example.batuku.controllers;
 
 import org.example.batuku.domain.ArtistProfile;
+import org.example.batuku.dto.ArtistSearchResult;
 import org.example.batuku.services.ArtistProfileService;
-import org.example.batuku.services.SpotifyClient;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,8 +21,14 @@ public class AdminArtistProfileController {
     }
 
     @GetMapping("/search")
-    public List<SpotifyClient.SpotifyArtist> search(@RequestParam("q") String query) {
-        return artistProfileService.search(query);
+    public List<ArtistSearchResult> search(@RequestParam("q") String query) {
+        var artists = artistProfileService.search(query);
+        var importedIds = artistProfileService.findImportedIds(
+                artists.stream().map(a -> a.id()).toList()
+        );
+        return artists.stream()
+                .map(a -> ArtistSearchResult.from(a, importedIds.contains(a.id())))
+                .toList();
     }
 
     @PostMapping("/import")

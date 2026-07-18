@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface TrackRepository extends JpaRepository<Track, Long> {
     List<Track> findByArtistProfileId(Long artistProfileId);
+    List<Track> findByArtistProfileIdAndSource(Long artistProfileId, Track.TrackSource source);
     boolean existsBySpotifyTrackId(String spotifyTrackId);
     Optional<Track> findBySpotifyTrackId(String spotifyTrackId);
     List<Track> findTop5ByTitleContainingIgnoreCase(String title);
