@@ -30,7 +30,7 @@ public class WebSecurityConfig {
     private final OAuth2AuthenticationFailureHandler oAuth2FailureHandler;
 
     @Value("${batuku.cors.allowed-origin}")
-    private String allowedOrigin;
+    private List<String> allowedOrigins;
 
     public WebSecurityConfig(JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
                              JwtRequestFilter jwtRequestFilter,
@@ -88,7 +88,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(allowedOrigin));
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

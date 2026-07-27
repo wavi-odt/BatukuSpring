@@ -1,6 +1,9 @@
 package org.example.batuku.controllers;
 
-import org.example.batuku.domain.ArtistProfile;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import org.example.batuku.dto.ArtistImportResponse;
 import org.example.batuku.dto.ArtistSearchResult;
 import org.example.batuku.services.ArtistProfileService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,7 +14,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/artist-profiles")
 @PreAuthorize("hasRole('ADMIN')")
-@CrossOrigin(origins = "${batuku.cors.allowed-origin}")
 public class AdminArtistProfileController {
 
     private final ArtistProfileService artistProfileService;
@@ -32,9 +34,14 @@ public class AdminArtistProfileController {
     }
 
     @PostMapping("/import")
-    public ArtistProfile importArtist(@RequestBody ImportRequest request) {
-        return artistProfileService.importArtist(request.spotifyArtistId());
+    public ArtistImportResponse importArtist(@RequestBody @Valid ImportRequest request) {
+        ArtistProfileService.ImportResult result = artistProfileService.importArtist(request.spotifyArtistId());
+        return ArtistImportResponse.from(result.profile(), result.tracksImported(), result.tracksUpdated(), result.tracksSkipped());
     }
 
-    record ImportRequest(String spotifyArtistId) {}
+    record ImportRequest(
+            @NotBlank
+            @Pattern(regexp = "[A-Za-z0-9]{22}", message = "must be a valid Spotify ID (22 alphanumeric characters)")
+            String spotifyArtistId
+    ) {}
 }

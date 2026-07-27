@@ -45,6 +45,15 @@ public class ArtistProfile {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column
+    private Integer popularity;
+
+    @Column(name = "follower_count")
+    private Integer followerCount;
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
+
     public Long getId() { return id; }
 
     public String getName() { return name; }
@@ -75,4 +84,13 @@ public class ArtistProfile {
     public void setUser(User user) { this.user = user; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public Integer getPopularity() { return popularity; }
+    public void setPopularity(Integer popularity) { this.popularity = popularity; }
+
+    public Integer getFollowerCount() { return followerCount; }
+    public void setFollowerCount(Integer followerCount) { this.followerCount = followerCount; }
+
+    public String getThumbnailUrl() { return thumbnailUrl; }
+    public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
 }

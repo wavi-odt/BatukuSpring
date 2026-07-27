@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException;
+import org.example.batuku.exception.SpotifyApiException;
 
 import java.util.List;
 
@@ -107,8 +107,8 @@ public class ArtistController {
                     ))
                     .toList();
             log.info("top-tracks: Spotify returned {} tracks", tracks.size());
-        } catch (HttpClientErrorException e) {
-            log.warn("top-tracks: top-tracks endpoint failed ({}), falling back to search", e.getStatusCode());
+        } catch (SpotifyApiException e) {
+            log.warn("top-tracks: top-tracks endpoint failed (HTTP {}), falling back to search", e.getHttpStatus());
             try {
                 tracks = spotifyClient
                         .searchTracksByArtistName(profile.getName(), 10)
@@ -123,8 +123,8 @@ public class ArtistController {
                         ))
                         .toList();
                 log.info("top-tracks: search fallback returned {} tracks", tracks.size());
-            } catch (HttpClientErrorException ex) {
-                log.warn("top-tracks: search fallback also failed: {}", ex.getStatusCode());
+            } catch (SpotifyApiException ex) {
+                log.warn("top-tracks: search fallback also failed (HTTP {})", ex.getHttpStatus());
                 tracks = List.of();
             }
         }
