@@ -29,6 +29,11 @@ public class ArtistProfile {
     @Column(name = "genre")
     private List<String> genres;
 
+    @ElementCollection
+    @CollectionTable(name = "artist_profile_languages", joinColumns = @JoinColumn(name = "artist_profile_id"))
+    @Column(name = "language")
+    private List<String> languages;
+
     @Column(columnDefinition = "TEXT")
     private String bio;
 
@@ -76,6 +81,9 @@ public class ArtistProfile {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public List<String> getLanguages() { return languages; }
+    public void setLanguages(List<String> languages) { this.languages = languages; }
 
     public boolean isClaimed() { return claimed; }
     public void setClaimed(boolean claimed) { this.claimed = claimed; }

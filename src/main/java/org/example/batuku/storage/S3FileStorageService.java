@@ -99,8 +99,11 @@ public class S3FileStorageService implements FileStorageService {
     }
 
     private String bucket(FileCategory category) {
-        return category == FileCategory.AVATAR
-                ? props.getS3().getAvatarBucket()
-                : props.getS3().getAudioBucket();
+        return switch (category) {
+            case AVATAR -> props.getS3().getAvatarBucket();
+            case COVER -> props.getS3().getCoverBucket();
+            case SELFIE, ID_DOCUMENT -> props.getS3().getVerificationBucket();
+            default -> props.getS3().getAudioBucket();
+        };
     }
 }

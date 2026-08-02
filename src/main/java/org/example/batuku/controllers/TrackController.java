@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
 import java.util.List;
@@ -36,12 +37,20 @@ public class TrackController {
         this.jwtUserDetailsService = jwtUserDetailsService;
     }
 
-    @PostMapping
+    /**
+     * Publicação direta de uma faixa: título + género (texto) + ficheiro de
+     * áudio + capa opcional, tudo numa só chamada multipart — contrato usado
+     * pelo modal Publish.jsx (aba "Faixa").
+     */
+    @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ARTIST')")
     public ResponseEntity<TrackResponse> create(@AuthenticationPrincipal UserDetails userDetails,
-                                                @Valid @RequestBody CreateTrackRequest request) {
+                                                @RequestParam String title,
+                                                @RequestParam String genre,
+                                                @RequestParam("audio") MultipartFile audio,
+                                                @RequestParam(value = "cover", required = false) MultipartFile cover) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-        Track track = trackService.create(user, request);
+        Track track = trackService.createFromUpload(user, title, genre, audio, cover);
         long likes = likeRepository.countByTrackId(track.getId());
         return ResponseEntity.created(URI.create("/api/tracks/" + track.getId()))
                 .body(TrackResponse.from(track, likes));
@@ -64,11 +73,14 @@ public class TrackController {
     @GetMapping("/{id}")
     public TrackDetailResponse getTrack(@PathVariable Long id) {
         Track t = trackService.findById(id);
-
         ArtistProfile profile = t.getArtistProfile();
-        String genre = (profile.getGenres() != null && !profile.getGenres().isEmpty())
-                ? profile.getGenres().get(0)
-                : null;
+
+        String genre = null;
+        if (t.getGenre() != null) {
+            genre = t.getGenre().getName();
+        } else if (profile.getGenres() != null && !profile.getGenres().isEmpty()) {
+            genre = profile.getGenres().get(0);
+        }
 
         return new TrackDetailResponse(
                 t.getId(),

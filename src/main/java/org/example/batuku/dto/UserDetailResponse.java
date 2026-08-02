@@ -6,6 +6,7 @@ public record UserDetailResponse(
         String handle,
         String imageUrl,
         String bio,
+        String location,
         long followers,
         long following,
         boolean isFollowing,

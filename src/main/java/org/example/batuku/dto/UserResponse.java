@@ -21,23 +21,32 @@ public class UserResponse {
     private String avatarUrl;
     private String country;
     private LocalDateTime createdAt;
+    private Long artistProfileId;   // null para não-artistas
+    private String spotifyArtistId; // null se o perfil ainda não está ligado ao Spotify
+    private String bio;
+    private String location;
 
     // Construtor privado — obriga a usar o método estático
     private UserResponse() {}
 
-    /**
-     * Converte uma entidade User num UserResponse seguro para enviar ao cliente.
-     */
     public static UserResponse from(User user) {
+        return from(user, null, null);
+    }
+
+    public static UserResponse from(User user, Long artistProfileId, String spotifyArtistId) {
         UserResponse r = new UserResponse();
-        r.id        = user.getId();
-        r.email     = user.getEmail();
-        r.username  = user.getUsername();
-        r.name      = user.getName();
-        r.userRole  = user.getUserRole().name();
-        r.avatarUrl = user.getAvatarUrl();
-        r.country   = user.getCountry();
-        r.createdAt = user.getCreatedAt();
+        r.id              = user.getId();
+        r.email           = user.getEmail();
+        r.username        = user.getUsername();
+        r.name            = user.getName();
+        r.userRole        = user.getUserRole().name();
+        r.avatarUrl       = user.getAvatarUrl();
+        r.country         = user.getCountry();
+        r.createdAt       = user.getCreatedAt();
+        r.artistProfileId  = artistProfileId;
+        r.spotifyArtistId  = spotifyArtistId;
+        r.bio              = user.getBio();
+        r.location         = user.getLocation();
         return r;
     }
 
@@ -51,4 +60,8 @@ public class UserResponse {
     public String getAvatarUrl() { return avatarUrl; }
     public String getCountry() { return country; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public Long getArtistProfileId() { return artistProfileId; }
+    public String getSpotifyArtistId() { return spotifyArtistId; }
+    public String getBio() { return bio; }
+    public String getLocation() { return location; }
 }

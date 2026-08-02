@@ -3,6 +3,7 @@ package org.example.batuku.controllers;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.RegisterRequest;
 import org.example.batuku.dto.UserResponse;
+import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.UserRepository;
 import org.example.batuku.services.AuthService;
 import jakarta.validation.Valid;
@@ -28,10 +29,13 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserRepository userRepository;
+    private final ArtistProfileRepository artistProfileRepository;
 
-    public AuthController(AuthService authService, UserRepository userRepository) {
+    public AuthController(AuthService authService, UserRepository userRepository,
+                          ArtistProfileRepository artistProfileRepository) {
         this.authService = authService;
         this.userRepository = userRepository;
+        this.artistProfileRepository = artistProfileRepository;
     }
 
     /**
@@ -86,7 +90,12 @@ public class AuthController {
         String email = auth.getName(); // o nome é o email (definido no JwtUserDetailsService)
 
         return userRepository.findByEmail(email)
-                .map(user -> ResponseEntity.ok(UserResponse.from(user)))
+                .map(user -> {
+                    var profile = artistProfileRepository.findByUserId(user.getId());
+                    Long artistProfileId  = profile.map(p -> p.getId()).orElse(null);
+                    String spotifyArtistId = profile.map(p -> p.getSpotifyArtistId()).orElse(null);
+                    return ResponseEntity.ok(UserResponse.from(user, artistProfileId, spotifyArtistId));
+                })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 }

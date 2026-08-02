@@ -35,7 +35,7 @@ public class Album {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public enum AlbumType { SINGLE, EP, ALBUM }
+    public enum AlbumType { SINGLE, EP, ALBUM, MIXTAPE }
 
     public Long getId() { return id; }
 
