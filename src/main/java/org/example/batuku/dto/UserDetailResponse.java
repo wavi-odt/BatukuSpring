@@ -10,5 +10,6 @@ public record UserDetailResponse(
         long followers,
         long following,
         boolean isFollowing,
-        int level
+        int level,
+        Long artistProfileId
 ) {}

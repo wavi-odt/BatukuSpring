@@ -15,9 +15,13 @@ public class Comment {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "track_id", nullable = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "track_id", nullable = true)
     private Track track;
+
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "album_id", nullable = true)
+    private Album album;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
@@ -25,6 +29,9 @@ public class Comment {
     @ManyToOne
     @JoinColumn(name = "parent_comment_id")
     private Comment parentComment;
+
+    @Column(nullable = false)
+    private boolean pinned = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -40,11 +47,17 @@ public class Comment {
     public Track getTrack() { return track; }
     public void setTrack(Track track) { this.track = track; }
 
+    public Album getAlbum() { return album; }
+    public void setAlbum(Album album) { this.album = album; }
+
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
 
     public Comment getParentComment() { return parentComment; }
     public void setParentComment(Comment parentComment) { this.parentComment = parentComment; }
+
+    public boolean isPinned() { return pinned; }
+    public void setPinned(boolean pinned) { this.pinned = pinned; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 

@@ -11,6 +11,7 @@ public class ReleaseResponse {
     private Long id;
     private String title;
     private String albumType;
+    private String status;
     private Long artistProfileId;
     private String artistName;
     private String coverUrl;
@@ -24,6 +25,7 @@ public class ReleaseResponse {
         r.id = album.getId();
         r.title = album.getTitle();
         r.albumType = album.getAlbumType().name();
+        r.status = album.getStatus().name();
         r.artistProfileId = album.getArtistProfile().getId();
         r.artistName = album.getArtistProfile().getName();
         r.coverUrl = album.getCoverUrl();
@@ -37,6 +39,7 @@ public class ReleaseResponse {
     public Long getId() { return id; }
     public String getTitle() { return title; }
     public String getAlbumType() { return albumType; }
+    public String getStatus() { return status; }
     public Long getArtistProfileId() { return artistProfileId; }
     public String getArtistName() { return artistName; }
     public String getCoverUrl() { return coverUrl; }

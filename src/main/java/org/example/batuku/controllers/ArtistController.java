@@ -2,10 +2,12 @@ package org.example.batuku.controllers;
 
 import jakarta.validation.Valid;
 import org.example.batuku.domain.ArtistProfile;
+import org.example.batuku.domain.ArtistSocialLink;
 import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.*;
 import org.example.batuku.exception.SpotifyApiException;
+import org.example.batuku.repository.ArtistFollowRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.FollowRepository;
 import org.example.batuku.repository.LikeRepository;
@@ -21,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +37,7 @@ public class ArtistController {
     private final ArtistProfileRepository artistProfileRepository;
     private final TrackRepository trackRepository;
     private final LikeRepository likeRepository;
+    private final ArtistFollowRepository artistFollowRepository;
     private final FollowRepository followRepository;
     private final SpotifyClient spotifyClient;
     private final UserRepository userRepository;
@@ -41,12 +45,14 @@ public class ArtistController {
     public ArtistController(ArtistProfileRepository artistProfileRepository,
                             TrackRepository trackRepository,
                             LikeRepository likeRepository,
+                            ArtistFollowRepository artistFollowRepository,
                             FollowRepository followRepository,
                             SpotifyClient spotifyClient,
                             UserRepository userRepository) {
         this.artistProfileRepository = artistProfileRepository;
         this.trackRepository = trackRepository;
         this.likeRepository = likeRepository;
+        this.artistFollowRepository = artistFollowRepository;
         this.followRepository = followRepository;
         this.spotifyClient = spotifyClient;
         this.userRepository = userRepository;
@@ -67,13 +73,17 @@ public class ArtistController {
 
         List<Track> tracks = trackRepository.findByArtistProfileId(id);
 
-        long followers = profile.getUser() != null
-                ? followRepository.countByFolloweeId(profile.getUser().getId())
-                : 0L;
+        long followers = artistFollowRepository.countByArtistProfileId(id);
 
-        String genre = (profile.getGenres() != null && !profile.getGenres().isEmpty())
-                ? profile.getGenres().get(0)
-                : null;
+        // imagem: preferir avatar do utilizador que reclamou o perfil
+        String imageUrl = (profile.isClaimed()
+                && profile.getUser() != null
+                && profile.getUser().getAvatarUrl() != null)
+                ? profile.getUser().getAvatarUrl()
+                : profile.getImageUrl();
+
+        List<String> genres = profile.getGenres() != null ? profile.getGenres() : List.of();
+        String genre = genres.isEmpty() ? null : genres.get(0);
 
         List<ArtistDetailResponse.TrackItem> trackItems = tracks.stream()
                 .map(t -> new ArtistDetailResponse.TrackItem(
@@ -85,16 +95,30 @@ public class ArtistController {
                 ))
                 .toList();
 
+        List<ArtistDetailResponse.LinkItem> linkItems = (profile.getLinks() != null)
+                ? profile.getLinks().stream()
+                        .filter(l -> l.getKind() != null && !l.getKind().isBlank())
+                        .map(l -> new ArtistDetailResponse.LinkItem(l.getKind(), l.getHandle() != null ? l.getHandle() : ""))
+                        .toList()
+                : List.of();
+
+        Long userId = (profile.isClaimed() && profile.getUser() != null)
+                ? profile.getUser().getId() : null;
+
         return new ArtistDetailResponse(
                 profile.getId(),
                 profile.getName(),
-                profile.getImageUrl(),
+                imageUrl,
                 genre,
-                null,
-                null,
+                profile.getLocation(),
+                profile.getBio(),
                 followers,
                 tracks.size(),
-                trackItems
+                trackItems,
+                genres,
+                profile.getLanguages() != null ? profile.getLanguages() : List.of(),
+                linkItems,
+                userId
         );
     }
 
@@ -152,6 +176,35 @@ public class ArtistController {
         profile.setGenres(request.getGenres());
         artistProfileRepository.save(profile);
         return ResponseEntity.ok(Map.of("message", "Géneros atualizados."));
+    }
+
+    /** GET /api/artists/me/links — devolve os links sociais do artista autenticado. */
+    @GetMapping("/me/links")
+    public ResponseEntity<?> getMyLinks() {
+        ArtistProfile profile = resolveMyProfile();
+        if (profile == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        List<Map<String, String>> result = profile.getLinks() != null
+                ? profile.getLinks().stream()
+                        .filter(l -> l.getKind() != null && !l.getKind().isBlank())
+                        .map(l -> Map.of("kind", l.getKind(), "handle", l.getHandle() != null ? l.getHandle() : ""))
+                        .toList()
+                : List.of();
+        return ResponseEntity.ok(result);
+    }
+
+    /** PUT /api/artists/me/links — substitui todos os links sociais do artista autenticado. */
+    @PutMapping("/me/links")
+    public ResponseEntity<?> updateLinks(@RequestBody Map<String, List<Map<String, String>>> body) {
+        ArtistProfile profile = resolveMyProfile();
+        if (profile == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        List<Map<String, String>> social = body.getOrDefault("social", List.of());
+        List<ArtistSocialLink> links = new ArrayList<>(social.stream()
+                .filter(s -> s.get("kind") != null && !s.get("kind").isBlank())
+                .map(s -> new ArtistSocialLink(s.get("kind"), s.getOrDefault("handle", "")))
+                .toList());
+        profile.setLinks(links);
+        artistProfileRepository.save(profile);
+        return ResponseEntity.ok(Map.of("message", "Links atualizados."));
     }
 
     /** PUT /api/artists/me/languages — apenas línguas da lista canónica. */

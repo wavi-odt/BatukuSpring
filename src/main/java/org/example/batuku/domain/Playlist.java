@@ -21,6 +21,12 @@ public class Playlist {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "cover_url", length = 500)
+    private String coverUrl;
+
+    @Column(name = "is_public", nullable = false)
+    private boolean isPublic = false;
+
     @Column(name = "is_collaborative", nullable = false)
     private boolean isCollaborative = false;
 
@@ -43,6 +49,12 @@ public class Playlist {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getCoverUrl() { return coverUrl; }
+    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+
+    public boolean isPublic() { return isPublic; }
+    public void setPublic(boolean pub) { isPublic = pub; }
 
     public boolean isCollaborative() { return isCollaborative; }
     public void setCollaborative(boolean collaborative) { isCollaborative = collaborative; }

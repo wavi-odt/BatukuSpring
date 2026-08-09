@@ -11,7 +11,12 @@ public record ArtistDetailResponse(
         String bio,
         long followers,
         int tracksCount,
-        List<TrackItem> tracks
+        List<TrackItem> tracks,
+        List<String> genres,
+        List<String> languages,
+        List<LinkItem> links,
+        Long userId
 ) {
     public record TrackItem(Long id, String title, String imageUrl, long plays, String duration) {}
+    public record LinkItem(String kind, String handle) {}
 }

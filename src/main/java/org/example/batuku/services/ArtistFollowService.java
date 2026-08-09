@@ -1,32 +1,59 @@
 package org.example.batuku.services;
 
+import org.example.batuku.config.TierProperties;
 import org.example.batuku.domain.ArtistFollow;
 import org.example.batuku.domain.ArtistProfile;
 import org.example.batuku.domain.User;
+import org.example.batuku.dto.ArtistFollowResponse;
+import org.example.batuku.dto.FanResponse;
 import org.example.batuku.repository.ArtistFollowRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
+import org.example.batuku.repository.FollowRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 public class ArtistFollowService {
 
     private final ArtistFollowRepository artistFollowRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final FollowRepository followRepository;
+    private final TierProperties tierProperties;
 
     public ArtistFollowService(ArtistFollowRepository artistFollowRepository,
-                               ArtistProfileRepository artistProfileRepository) {
+                               ArtistProfileRepository artistProfileRepository,
+                               FollowRepository followRepository,
+                               TierProperties tierProperties) {
         this.artistFollowRepository = artistFollowRepository;
         this.artistProfileRepository = artistProfileRepository;
+        this.followRepository = followRepository;
+        this.tierProperties = tierProperties;
     }
 
     @Transactional
     public long follow(User follower, Long artistProfileId) {
+        ArtistProfile profile = artistProfileRepository.findById(artistProfileId)
+                .orElseThrow(() -> new RuntimeException("Artista não encontrado."));
+
+        if (profile.getUser() != null && profile.getUser().getId().equals(follower.getId())) {
+            throw new RuntimeException("Não podes seguir o teu próprio perfil.");
+        }
         if (artistFollowRepository.existsByFollowerIdAndArtistProfileId(follower.getId(), artistProfileId)) {
             throw new RuntimeException("Já segues este artista.");
         }
-        ArtistProfile profile = artistProfileRepository.findById(artistProfileId)
-                .orElseThrow(() -> new RuntimeException("Artista não encontrado."));
+
+        // migrar follow stale: se o artista tem conta e o follower já o seguia via `follows`, remover
+        if (profile.getUser() != null) {
+            followRepository.deleteByFollowerIdAndFolloweeId(follower.getId(), profile.getUser().getId());
+        }
+
         ArtistFollow follow = new ArtistFollow();
         follow.setFollower(follower);
         follow.setArtistProfile(profile);
@@ -46,5 +73,36 @@ public class ArtistFollowService {
 
     public long followerCount(Long artistProfileId) {
         return artistFollowRepository.countByArtistProfileId(artistProfileId);
+    }
+
+    public List<FanResponse> listFans(User artist) {
+        ArtistProfile profile = artistProfileRepository.findByUserId(artist.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil de artista não encontrado."));
+        return artistFollowRepository.findFansWithStatsByArtistProfile(profile.getId())
+                .stream()
+                .map(p -> FanResponse.from(p, tierProperties))
+                .toList();
+    }
+
+    public List<ArtistFollowResponse> listFollowed(User user) {
+        Set<Long> seen = new HashSet<>();
+        List<ArtistFollowResponse> result = new ArrayList<>();
+
+        // artistas seguidos directamente via artist_follows
+        for (ArtistFollow f : artistFollowRepository.findByFollowerIdOrderByCreatedAtDesc(user.getId())) {
+            ArtistProfile p = f.getArtistProfile();
+            if (seen.add(p.getId())) {
+                result.add(ArtistFollowResponse.from(p, artistFollowRepository.countByArtistProfileId(p.getId())));
+            }
+        }
+
+        // users seguidos via follows cujo user tem um ArtistProfile associado
+        for (ArtistProfile p : artistProfileRepository.findByFollowerViaUserFollow(user.getId())) {
+            if (seen.add(p.getId())) {
+                result.add(ArtistFollowResponse.from(p, artistFollowRepository.countByArtistProfileId(p.getId())));
+            }
+        }
+
+        return result;
     }
 }

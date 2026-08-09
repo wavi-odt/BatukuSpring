@@ -2,6 +2,7 @@ package org.example.batuku.repository;
 
 import org.example.batuku.domain.Track;
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,4 +13,6 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     Optional<Track> findBySpotifyTrackId(String spotifyTrackId);
     List<Track> findTop5ByTitleContainingIgnoreCase(String title);
     List<Track> findTop5ByIsPublishedTrueOrderByCreatedAtDesc();
+    List<Track> findBySourceAndDurationMsIsNull(Track.TrackSource source);
+    List<Track> findByScheduledAtBeforeAndIsPublishedFalse(LocalDateTime cutoff);
 }

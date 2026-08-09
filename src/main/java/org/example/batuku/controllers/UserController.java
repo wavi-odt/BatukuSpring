@@ -6,7 +6,10 @@ import org.example.batuku.dto.ChangePasswordRequest;
 import org.example.batuku.dto.UpdateProfileRequest;
 import org.example.batuku.dto.UserDetailResponse;
 import org.example.batuku.dto.UserResponse;
+import org.example.batuku.repository.ArtistFollowRepository;
+import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.FollowRepository;
+import org.example.batuku.repository.PlayRepository;
 import org.example.batuku.repository.UserRepository;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.HttpStatus;
@@ -17,6 +20,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -26,15 +31,24 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
+    private final ArtistFollowRepository artistFollowRepository;
+    private final ArtistProfileRepository artistProfileRepository;
+    private final PlayRepository playRepository;
     private final JwtUserDetailsService jwtUserDetailsService;
     private final PasswordEncoder passwordEncoder;
 
     public UserController(UserRepository userRepository,
                           FollowRepository followRepository,
+                          ArtistFollowRepository artistFollowRepository,
+                          ArtistProfileRepository artistProfileRepository,
+                          PlayRepository playRepository,
                           JwtUserDetailsService jwtUserDetailsService,
                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
+        this.artistFollowRepository = artistFollowRepository;
+        this.artistProfileRepository = artistProfileRepository;
+        this.playRepository = playRepository;
         this.jwtUserDetailsService = jwtUserDetailsService;
         this.passwordEncoder = passwordEncoder;
     }
@@ -43,13 +57,22 @@ public class UserController {
     public UserDetailResponse getUser(@PathVariable Long id,
                                       @AuthenticationPrincipal UserDetails userDetails) {
         User user = userRepository.findById(id).orElseThrow();
-        long followers = followRepository.countByFolloweeId(id);
-        long following = followRepository.countByFollowerId(id);
+        Long artistProfileId = artistProfileRepository.findByUserId(id)
+                .map(a -> a.getId())
+                .orElse(null);
+
+        long followers = artistProfileId != null
+                ? artistFollowRepository.countByArtistProfileId(artistProfileId)
+                : followRepository.countByFolloweeId(id);
+        long following = followRepository.countByFollowerId(id)
+                       + artistFollowRepository.countByFollowerId(id);
 
         boolean isFollowing = false;
         if (userDetails != null) {
             User me = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-            isFollowing = followRepository.existsByFollowerIdAndFolloweeId(me.getId(), id);
+            isFollowing = artistProfileId != null
+                    ? artistFollowRepository.existsByFollowerIdAndArtistProfileId(me.getId(), artistProfileId)
+                    : followRepository.existsByFollowerIdAndFolloweeId(me.getId(), id);
         }
 
         return new UserDetailResponse(
@@ -62,7 +85,8 @@ public class UserController {
                 followers,
                 following,
                 isFollowing,
-                0
+                0,
+                artistProfileId
         );
     }
 
@@ -108,5 +132,50 @@ public class UserController {
         userRepository.save(user);
 
         return ResponseEntity.ok(Map.of("message", "Palavra-passe alterada."));
+    }
+
+    /**
+     * GET /api/users/me/recently-played
+     * Devolve as últimas faixas únicas ouvidas pelo utilizador autenticado.
+     * Formato: [{ trackId, title, coverUrl, artistName, artistId }]
+     */
+    @GetMapping("/me/recently-played")
+    public ResponseEntity<List<Map<String, Object>>> getMyRecentlyPlayed(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        List<Object[]> rows = playRepository.findRecentlyPlayedByUser(user.getId());
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            Map<String, Object> item = new java.util.LinkedHashMap<>();
+            item.put("trackId",    ((Number) row[0]).longValue());
+            item.put("title",      row[1]);
+            item.put("coverUrl",   row[2]);
+            item.put("artistName", row[3]);
+            item.put("artistId",   ((Number) row[4]).longValue());
+            result.add(item);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * GET /api/users/me/top-genres
+     * Devolve os géneros mais ouvidos pelo utilizador autenticado,
+     * calculados a partir das suas reproduções registadas.
+     * Formato: [{ name, plays, pct }]
+     */
+    @GetMapping("/me/top-genres")
+    public ResponseEntity<List<Map<String, Object>>> getMyTopGenres(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        List<Object[]> rows = playRepository.findTopGenresByUser(user.getId());
+        long total = rows.stream().mapToLong(r -> ((Number) r[1]).longValue()).sum();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            String name  = (String) row[0];
+            long   plays = ((Number) row[1]).longValue();
+            int    pct   = total > 0 ? (int) Math.round(plays * 100.0 / total) : 0;
+            result.add(Map.of("name", name, "plays", plays, "pct", pct));
+        }
+        return ResponseEntity.ok(result);
     }
 }

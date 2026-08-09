@@ -9,7 +9,11 @@ import org.example.batuku.repository.TrackRepository;
 import org.example.batuku.repository.UserRepository;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/search")
@@ -36,9 +40,48 @@ public class SearchController {
 
         String term = q.strip();
 
-        List<SearchResponse.ArtistResult> artists = artistProfileRepository
-                .findTop5ByNameContainingIgnoreCase(term)
-                .stream()
+        // ── Artistas ────────────────────────────────────────────────────────
+        List<ArtistProfile> allArtists = artistProfileRepository.findTop5ByNameContainingIgnoreCase(term);
+
+        // Claimed = ligados a um utilizador real
+        List<ArtistProfile> claimedArtists   = allArtists.stream()
+                .filter(a -> a.isClaimed() && a.getUser() != null)
+                .toList();
+        List<ArtistProfile> unclaimedArtists = allArtists.stream()
+                .filter(a -> !a.isClaimed() || a.getUser() == null)
+                .toList();
+
+        // userId → artistProfileId para artistas claimed
+        Map<Long, Long> userToArtist = claimedArtists.stream()
+                .collect(Collectors.toMap(a -> a.getUser().getId(), ArtistProfile::getId));
+
+        // ── Utilizadores ────────────────────────────────────────────────────
+        List<User> rawUsers = userRepository
+                .findTop5ByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(term, term);
+
+        Set<Long> rawUserIds = rawUsers.stream().map(User::getId).collect(Collectors.toSet());
+
+        List<SearchResponse.UserResult> users = new ArrayList<>();
+
+        // Utilizadores encontrados pela pesquisa de nome/username
+        for (User u : rawUsers) {
+            Long artistProfileId = userToArtist.get(u.getId());
+            users.add(new SearchResponse.UserResult(
+                    u.getId(), u.getName(), "@" + u.getUsername(), u.getAvatarUrl(), artistProfileId));
+        }
+
+        // Artistas claimed cujo utilizador NÃO apareceu na pesquisa por nome
+        // (o nome do artista bate com o termo mas o nome do utilizador não)
+        for (ArtistProfile a : claimedArtists) {
+            User u = a.getUser();
+            if (!rawUserIds.contains(u.getId())) {
+                users.add(new SearchResponse.UserResult(
+                        u.getId(), u.getName(), "@" + u.getUsername(), u.getAvatarUrl(), a.getId()));
+            }
+        }
+
+        // ── Resultado final ──────────────────────────────────────────────────
+        List<SearchResponse.ArtistResult> artists = unclaimedArtists.stream()
                 .map(this::toArtistResult)
                 .toList();
 
@@ -46,12 +89,6 @@ public class SearchController {
                 .findTop5ByTitleContainingIgnoreCase(term)
                 .stream()
                 .map(this::toTrackResult)
-                .toList();
-
-        List<SearchResponse.UserResult> users = userRepository
-                .findTop5ByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(term, term)
-                .stream()
-                .map(this::toUserResult)
                 .toList();
 
         return new SearchResponse(artists, tracks, List.of(), users);
@@ -70,10 +107,6 @@ public class SearchController {
                 t.getCoverUrl(),
                 formatDuration(t.getDurationMs())
         );
-    }
-
-    private SearchResponse.UserResult toUserResult(User u) {
-        return new SearchResponse.UserResult(u.getId(), u.getName(), "@" + u.getUsername(), u.getAvatarUrl());
     }
 
     static String formatDuration(Integer ms) {

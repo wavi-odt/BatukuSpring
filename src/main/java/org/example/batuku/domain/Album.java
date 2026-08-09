@@ -32,10 +32,15 @@ public class Album {
     @Column(name = "album_type", nullable = false, length = 10)
     private AlbumType albumType = AlbumType.ALBUM;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private Status status = Status.DRAFT;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public enum AlbumType { SINGLE, EP, ALBUM, MIXTAPE }
+    public enum Status    { DRAFT, PUBLISHED }
 
     public Long getId() { return id; }
 
@@ -56,6 +61,9 @@ public class Album {
 
     public AlbumType getAlbumType() { return albumType; }
     public void setAlbumType(AlbumType albumType) { this.albumType = albumType; }
+
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

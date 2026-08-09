@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ShareRepository extends JpaRepository<Share, Long> {
     long countByTrackId(Long trackId);
+    void deleteByTrackId(Long trackId);
 }

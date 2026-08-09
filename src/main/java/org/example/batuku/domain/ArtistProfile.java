@@ -59,6 +59,11 @@ public class ArtistProfile {
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
 
+    @ElementCollection(fetch = jakarta.persistence.FetchType.EAGER)
+    @CollectionTable(name = "artist_profile_links",
+            joinColumns = @JoinColumn(name = "artist_profile_id"))
+    private List<ArtistSocialLink> links;
+
     public Long getId() { return id; }
 
     public String getName() { return name; }
@@ -101,4 +106,7 @@ public class ArtistProfile {
 
     public String getThumbnailUrl() { return thumbnailUrl; }
     public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
+
+    public List<ArtistSocialLink> getLinks() { return links; }
+    public void setLinks(List<ArtistSocialLink> links) { this.links = links; }
 }

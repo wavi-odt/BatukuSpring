@@ -16,4 +16,7 @@ public interface ArtistProfileRepository extends JpaRepository<ArtistProfile, Lo
 
     @Query("SELECT a.spotifyArtistId FROM ArtistProfile a WHERE a.spotifyArtistId IN :ids")
     Set<String> findImportedSpotifyIds(@Param("ids") List<String> ids);
+
+    @Query("SELECT a FROM ArtistProfile a WHERE a.user IS NOT NULL AND a.user.id IN (SELECT f.followee.id FROM Follow f WHERE f.follower.id = :userId)")
+    List<ArtistProfile> findByFollowerViaUserFollow(@Param("userId") Long userId);
 }

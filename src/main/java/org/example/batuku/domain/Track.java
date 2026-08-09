@@ -54,6 +54,9 @@ public class Track {
     @Column(name = "is_indexed", nullable = false)
     private boolean isIndexed = true;
 
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -100,6 +103,9 @@ public class Track {
 
     public boolean isIndexed() { return isIndexed; }
     public void setIndexed(boolean indexed) { isIndexed = indexed; }
+
+    public LocalDateTime getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

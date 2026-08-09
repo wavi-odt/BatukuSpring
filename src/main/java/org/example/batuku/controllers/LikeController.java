@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/likes")
@@ -36,5 +37,13 @@ public class LikeController {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
         likeService.unlike(user, trackId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{trackId}/status")
+    public ResponseEntity<Map<String, Object>> status(@AuthenticationPrincipal UserDetails userDetails,
+                                                       @PathVariable Long trackId) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        LikeService.LikeStatus s = likeService.status(user, trackId);
+        return ResponseEntity.ok(Map.of("liked", s.liked(), "count", s.count()));
     }
 }
