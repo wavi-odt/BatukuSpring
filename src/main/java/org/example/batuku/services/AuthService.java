@@ -27,15 +27,18 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final ArtistProfileRepository artistProfileRepository;
+    private final GamificationService gamificationService;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       ArtistProfileRepository artistProfileRepository) {
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.passwordEncoder = passwordEncoder;
+                       ArtistProfileRepository artistProfileRepository,
+                       GamificationService gamificationService) {
+        this.userRepository       = userRepository;
+        this.roleRepository       = roleRepository;
+        this.passwordEncoder      = passwordEncoder;
         this.artistProfileRepository = artistProfileRepository;
+        this.gamificationService  = gamificationService;
     }
 
     /**
@@ -72,6 +75,7 @@ public class AuthService {
         user.setEnabled(true);
 
         User saved = userRepository.save(user);
+        gamificationService.inicializarPontos(saved);
 
         if (userRole == User.UserRole.ARTIST) {
             ArtistProfile profile = new ArtistProfile();

@@ -11,6 +11,8 @@ import java.util.List;
 public interface LikeRepository extends JpaRepository<Like, Long> {
     boolean existsByUserIdAndTrackId(Long userId, Long trackId);
     long countByTrackId(Long trackId);
+    long countByUserId(Long userId);
+    long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime since);
     void deleteByUserIdAndTrackId(Long userId, Long trackId);
     void deleteByTrackId(Long trackId);
     List<Like> findByUserIdOrderByCreatedAtDesc(Long userId);

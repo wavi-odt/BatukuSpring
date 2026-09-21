@@ -28,6 +28,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Query("SELECT c FROM Comment c WHERE c.parentComment.id IN :parentIds ORDER BY c.createdAt ASC")
     List<Comment> findRepliesByParentIds(@Param("parentIds") List<Long> parentIds);
 
+    long countByUserId(Long userId);
+    long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime since);
+
     @Modifying
     @Query(value = "DELETE c FROM comments c JOIN comments parent ON c.parent_comment_id = parent.id WHERE parent.track_id = :trackId", nativeQuery = true)
     void deleteRepliesByParentTrackId(@Param("trackId") Long trackId);

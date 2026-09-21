@@ -22,13 +22,19 @@ public class Notification {
     @Column(name = "reference_id")
     private Long referenceId;
 
+    @Column(length = 500)
+    private String message;
+
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public enum NotificationType { LIKE, FOLLOW, COMMENT, BADGE, SYSTEM }
+    public enum NotificationType {
+        LIKE, FOLLOW, COMMENT, BADGE, SYSTEM,
+        OFFER_RECEIVED, OFFER_ACCEPTED, OFFER_REJECTED, BEAT_PURCHASED
+    }
 
     public Long getId() { return id; }
 
@@ -40,6 +46,9 @@ public class Notification {
 
     public Long getReferenceId() { return referenceId; }
     public void setReferenceId(Long referenceId) { this.referenceId = referenceId; }
+
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
 
     public boolean isRead() { return isRead; }
     public void setRead(boolean read) { isRead = read; }

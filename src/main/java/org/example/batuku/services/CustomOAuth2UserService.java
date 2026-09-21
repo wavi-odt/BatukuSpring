@@ -28,13 +28,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final DiscordAccountRepository discordAccountRepository;
+    private final GamificationService gamificationService;
 
     public CustomOAuth2UserService(UserRepository userRepository,
                                    RoleRepository roleRepository,
-                                   DiscordAccountRepository discordAccountRepository) {
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
+                                   DiscordAccountRepository discordAccountRepository,
+                                   GamificationService gamificationService) {
+        this.userRepository       = userRepository;
+        this.roleRepository       = roleRepository;
         this.discordAccountRepository = discordAccountRepository;
+        this.gamificationService  = gamificationService;
     }
 
     @Override
@@ -102,7 +105,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setRoles(Set.of(fanRole));
         user.setEnabled(true);
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        gamificationService.inicializarPontos(saved);
+        return saved;
     }
 
     private void syncDiscordAccount(User user, DiscordOAuth2UserInfo userInfo) {

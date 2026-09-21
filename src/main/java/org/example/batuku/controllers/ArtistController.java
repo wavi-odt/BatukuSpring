@@ -26,6 +26,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @RestController
 @RequestMapping("/api/artists")
@@ -274,5 +279,28 @@ public class ArtistController {
         }
 
         return ResponseEntity.ok(tracks);
+    }
+
+    /** GET /api/artists/suggested — artistas não seguidos pelo utilizador autenticado (sugestões). */
+    @GetMapping("/suggested")
+    public ResponseEntity<List<ArtistFollowResponse>> getSuggested(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Set<Long> followedIds = Set.of();
+        if (userDetails != null) {
+            User me = userRepository.findByEmail(userDetails.getUsername()).orElse(null);
+            if (me != null) {
+                followedIds = artistFollowRepository.findByFollowerIdOrderByCreatedAtDesc(me.getId())
+                        .stream().map(f -> f.getArtistProfile().getId())
+                        .collect(Collectors.toSet());
+            }
+        }
+        final Set<Long> excluded = followedIds;
+        List<ArtistProfile> all = artistProfileRepository.findAll();
+        List<ArtistFollowResponse> result = all.stream()
+                .filter(a -> !excluded.contains(a.getId()))
+                .limit(10)
+                .map(a -> ArtistFollowResponse.from(a, artistFollowRepository.countByArtistProfileId(a.getId())))
+                .toList();
+        return ResponseEntity.ok(result);
     }
 }

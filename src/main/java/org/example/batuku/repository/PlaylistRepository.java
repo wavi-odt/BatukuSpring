@@ -11,4 +11,5 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
     Optional<Playlist> findByUserIdAndIsSystemGeneratedTrue(Long userId);
     List<Playlist> findByUserIdOrderByCreatedAtDesc(Long userId);
     List<Playlist> findByUserIdAndIsPublicTrueAndIsSystemGeneratedFalseOrderByCreatedAtDesc(Long userId);
+    long countByUserIdAndIsSystemGeneratedFalse(Long userId);
 }

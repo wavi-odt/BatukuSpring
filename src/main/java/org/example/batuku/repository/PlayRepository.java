@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.sql.Date;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,6 +33,41 @@ public interface PlayRepository extends JpaRepository<Play, Long> {
                    "WHERE t.artist_profile_id = :artistId AND p.played_at >= :since " +
                    "GROUP BY p.referrer_url ORDER BY COUNT(*) DESC", nativeQuery = true)
     List<Object[]> findSourceBreakdownByArtist(@Param("artistId") Long artistId, @Param("since") LocalDateTime since);
+
+    /* ── Queries de gamificação ────────────────────────────────────── */
+
+    @Query(value = "SELECT COALESCE(SUM(p.duration_played), 0) FROM plays p " +
+                   "WHERE p.user_id = :userId AND p.played_at >= :since AND p.duration_played IS NOT NULL",
+           nativeQuery = true)
+    long sumDurationPlayedSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
+
+    @Query(value = "SELECT COUNT(DISTINCT t.artist_profile_id) FROM plays p " +
+                   "JOIN tracks t ON p.track_id = t.id " +
+                   "WHERE p.user_id = :userId AND p.played_at >= :since",
+           nativeQuery = true)
+    long countDistinctArtistsSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
+
+    @Query(value = "SELECT COUNT(DISTINCT p.track_id) FROM plays p WHERE p.user_id = :userId",
+           nativeQuery = true)
+    long countDistinctTracksByUser(@Param("userId") Long userId);
+
+    @Query(value = "SELECT COUNT(DISTINCT t.artist_profile_id) FROM plays p " +
+                   "JOIN tracks t ON p.track_id = t.id WHERE p.user_id = :userId",
+           nativeQuery = true)
+    long countDistinctArtistsByUser(@Param("userId") Long userId);
+
+    @Query(value = "SELECT DISTINCT DATE(p.played_at) FROM plays p " +
+                   "WHERE p.user_id = :userId AND p.played_at >= :since " +
+                   "ORDER BY DATE(p.played_at) DESC",
+           nativeQuery = true)
+    List<Date> findDistinctPlayDatesSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
+
+    @Query(value = "SELECT COALESCE(SUM(p.duration_played), 0) FROM plays p " +
+                   "WHERE p.user_id = :userId AND p.duration_played IS NOT NULL",
+           nativeQuery = true)
+    long sumTotalDurationByUser(@Param("userId") Long userId);
+
+    /* ─────────────────────────────────────────────────────────────── */
 
     @Query(value = "SELECT p.country, COUNT(*) FROM plays p " +
                    "INNER JOIN tracks t ON p.track_id = t.id " +

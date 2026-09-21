@@ -3,6 +3,7 @@ package org.example.batuku.services;
 import org.example.batuku.config.TierProperties;
 import org.example.batuku.domain.ArtistFollow;
 import org.example.batuku.domain.ArtistProfile;
+import org.example.batuku.domain.Notification;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.ArtistFollowResponse;
 import org.example.batuku.dto.FanResponse;
@@ -26,15 +27,18 @@ public class ArtistFollowService {
     private final ArtistProfileRepository artistProfileRepository;
     private final FollowRepository followRepository;
     private final TierProperties tierProperties;
+    private final NotificationService notificationService;
 
     public ArtistFollowService(ArtistFollowRepository artistFollowRepository,
                                ArtistProfileRepository artistProfileRepository,
                                FollowRepository followRepository,
-                               TierProperties tierProperties) {
+                               TierProperties tierProperties,
+                               NotificationService notificationService) {
         this.artistFollowRepository = artistFollowRepository;
         this.artistProfileRepository = artistProfileRepository;
         this.followRepository = followRepository;
         this.tierProperties = tierProperties;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -58,6 +62,14 @@ public class ArtistFollowService {
         follow.setFollower(follower);
         follow.setArtistProfile(profile);
         artistFollowRepository.save(follow);
+
+        User artistUser = profile.getUser();
+        if (artistUser != null && !artistUser.getId().equals(follower.getId())) {
+            String followerName = (follower.getName() != null && !follower.getName().isBlank()) ? follower.getName() : follower.getUsername();
+            notificationService.notify(artistUser, Notification.NotificationType.FOLLOW, follower.getId(),
+                    followerName + " começou a seguir-te");
+        }
+
         return artistFollowRepository.countByArtistProfileId(artistProfileId);
     }
 

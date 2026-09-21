@@ -16,6 +16,7 @@ public interface ArtistFollowRepository extends JpaRepository<ArtistFollow, Long
     List<ArtistFollow> findByFollowerIdOrderByCreatedAtDesc(Long followerId);
     List<ArtistFollow> findByArtistProfileIdOrderByCreatedAtDesc(Long artistProfileId);
     long countByFollowerId(Long followerId);
+    long countByFollowerIdAndCreatedAtAfter(Long followerId, LocalDateTime since);
     long countByArtistProfileIdAndCreatedAtAfter(Long artistProfileId, LocalDateTime since);
     long countByArtistProfileIdAndCreatedAtBetween(Long artistProfileId, LocalDateTime from, LocalDateTime to);
 

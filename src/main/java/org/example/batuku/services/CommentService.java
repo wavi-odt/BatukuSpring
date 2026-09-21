@@ -2,6 +2,8 @@ package org.example.batuku.services;
 
 import org.example.batuku.domain.Album;
 import org.example.batuku.domain.Comment;
+import org.example.batuku.domain.Notification;
+import org.example.batuku.domain.PointTransaction;
 import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.CommentResponse;
@@ -24,13 +26,19 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final TrackRepository   trackRepository;
     private final AlbumRepository   albumRepository;
+    private final GamificationService gamificationService;
+    private final NotificationService notificationService;
 
     public CommentService(CommentRepository commentRepository,
                           TrackRepository trackRepository,
-                          AlbumRepository albumRepository) {
-        this.commentRepository = commentRepository;
-        this.trackRepository   = trackRepository;
-        this.albumRepository   = albumRepository;
+                          AlbumRepository albumRepository,
+                          GamificationService gamificationService,
+                          NotificationService notificationService) {
+        this.commentRepository  = commentRepository;
+        this.trackRepository    = trackRepository;
+        this.albumRepository    = albumRepository;
+        this.gamificationService = gamificationService;
+        this.notificationService = notificationService;
     }
 
     public List<CommentResponse> listByTrack(Long trackId, Long currentUserId) {
@@ -91,6 +99,16 @@ public class CommentService {
         comment.setTrack(track);
         comment.setContent(content.trim());
         comment = commentRepository.save(comment);
+
+        gamificationService.adicionarPontos(user, PointTransaction.ActionType.COMMENT, trackId);
+
+        User artist = (track.getArtistProfile() != null) ? track.getArtistProfile().getUser() : null;
+        if (artist != null && !artist.getId().equals(user.getId())) {
+            String commenterName = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getUsername();
+            notificationService.notify(artist, Notification.NotificationType.COMMENT, comment.getId(),
+                    commenterName + " comentou em \"" + track.getTitle() + "\"");
+        }
+
         return CommentResponse.from(comment, user.getId());
     }
 
@@ -107,6 +125,16 @@ public class CommentService {
         comment.setAlbum(album);
         comment.setContent(content.trim());
         comment = commentRepository.save(comment);
+
+        gamificationService.adicionarPontos(user, PointTransaction.ActionType.COMMENT, albumId);
+
+        User artist = (album.getArtistProfile() != null) ? album.getArtistProfile().getUser() : null;
+        if (artist != null && !artist.getId().equals(user.getId())) {
+            String commenterName = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getUsername();
+            notificationService.notify(artist, Notification.NotificationType.COMMENT, comment.getId(),
+                    commenterName + " comentou no lançamento \"" + album.getTitle() + "\"");
+        }
+
         return CommentResponse.from(comment, user.getId());
     }
 
@@ -128,6 +156,14 @@ public class CommentService {
         reply.setParentComment(parent);
         reply.setContent(content.trim());
         reply = commentRepository.save(reply);
+
+        User originalCommenter = parent.getUser();
+        if (!originalCommenter.getId().equals(artist.getId())) {
+            String artistName = (artist.getName() != null && !artist.getName().isBlank()) ? artist.getName() : artist.getUsername();
+            notificationService.notify(originalCommenter, Notification.NotificationType.COMMENT, reply.getId(),
+                    artistName + " respondeu ao teu comentário");
+        }
+
         return CommentResponse.from(reply, artist.getId());
     }
 

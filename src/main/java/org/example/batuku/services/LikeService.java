@@ -1,8 +1,10 @@
 package org.example.batuku.services;
 
 import org.example.batuku.domain.Like;
+import org.example.batuku.domain.Notification;
 import org.example.batuku.domain.Playlist;
 import org.example.batuku.domain.PlaylistTrack;
+import org.example.batuku.domain.PointTransaction;
 import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
 import org.example.batuku.repository.LikeRepository;
@@ -19,15 +21,21 @@ public class LikeService {
     private final TrackRepository trackRepository;
     private final PlaylistRepository playlistRepository;
     private final PlaylistTrackRepository playlistTrackRepository;
+    private final GamificationService gamificationService;
+    private final NotificationService notificationService;
 
     public LikeService(LikeRepository likeRepository,
                        TrackRepository trackRepository,
                        PlaylistRepository playlistRepository,
-                       PlaylistTrackRepository playlistTrackRepository) {
+                       PlaylistTrackRepository playlistTrackRepository,
+                       GamificationService gamificationService,
+                       NotificationService notificationService) {
         this.likeRepository = likeRepository;
         this.trackRepository = trackRepository;
         this.playlistRepository = playlistRepository;
         this.playlistTrackRepository = playlistTrackRepository;
+        this.gamificationService = gamificationService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -41,6 +49,15 @@ public class LikeService {
         like.setUser(user);
         like.setTrack(track);
         likeRepository.save(like);
+
+        gamificationService.adicionarPontos(user, PointTransaction.ActionType.LIKE, trackId);
+
+        User artist = (track.getArtistProfile() != null) ? track.getArtistProfile().getUser() : null;
+        if (artist != null && !artist.getId().equals(user.getId())) {
+            String likerName = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getUsername();
+            notificationService.notify(artist, Notification.NotificationType.LIKE, track.getId(),
+                    likerName + " gostou de \"" + track.getTitle() + "\"");
+        }
 
         // Adicionar aos Favoritos
         Playlist favorites = getOrCreateFavorites(user);

@@ -6,7 +6,11 @@ public enum FileCategory {
     COVER("covers"),
     SELFIE("verification/selfies"),
     ID_DOCUMENT("verification/documents"),
-    PLAYLIST_COVER("playlists/covers");
+    PLAYLIST_COVER("playlists/covers"),
+    PERSONAL("personal"),
+    PROJECT_COVER("projects/covers"),
+    BEAT_AUDIO("beats/audio"),
+    BEAT_COVER("beats/covers");
 
     private final String folder;
 

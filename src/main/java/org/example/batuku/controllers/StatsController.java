@@ -2,10 +2,12 @@ package org.example.batuku.controllers;
 
 import org.example.batuku.domain.ArtistProfile;
 import org.example.batuku.domain.Play;
+import org.example.batuku.domain.PointTransaction;
 import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.StatsResponse;
 import org.example.batuku.repository.*;
+import org.example.batuku.services.GamificationService;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +31,7 @@ public class StatsController {
     private final TrackRepository         trackRepository;
     private final CommentRepository       commentRepository;
     private final JwtUserDetailsService   jwtUserDetailsService;
+    private final GamificationService     gamificationService;
 
     public StatsController(ArtistProfileRepository artistProfileRepository,
                            PlayRepository playRepository,
@@ -36,7 +39,8 @@ public class StatsController {
                            ArtistFollowRepository artistFollowRepository,
                            TrackRepository trackRepository,
                            CommentRepository commentRepository,
-                           JwtUserDetailsService jwtUserDetailsService) {
+                           JwtUserDetailsService jwtUserDetailsService,
+                           GamificationService gamificationService) {
         this.artistProfileRepository = artistProfileRepository;
         this.playRepository          = playRepository;
         this.likeRepository          = likeRepository;
@@ -44,6 +48,7 @@ public class StatsController {
         this.trackRepository         = trackRepository;
         this.commentRepository       = commentRepository;
         this.jwtUserDetailsService   = jwtUserDetailsService;
+        this.gamificationService     = gamificationService;
     }
 
     /** GET /api/stats/me?period=7d|30d|90d */
@@ -264,9 +269,23 @@ public class StatsController {
             playRepository.findById(id).ifPresent(play -> {
                 if (body.get("durationPlayed") instanceof Number n)
                     play.setDurationPlayed(n.intValue());
+
+                boolean jaEraFull = play.isFullPlay();
                 if (body.get("isFullPlay") instanceof Boolean b)
                     play.setFullPlay(b);
+
                 playRepository.save(play);
+
+                // Pontos apenas na primeira vez que a faixa é marcada como completa
+                if (!jaEraFull && play.isFullPlay() && play.getUser() != null) {
+                    try {
+                        gamificationService.adicionarPontos(
+                                play.getUser(),
+                                PointTransaction.ActionType.PLAY,
+                                play.getTrack().getId()
+                        );
+                    } catch (Exception ignored) {}
+                }
             });
         } catch (Exception ignored) {}
         return ResponseEntity.noContent().build();

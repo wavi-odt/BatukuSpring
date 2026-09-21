@@ -68,6 +68,10 @@ public class User {
     @Column(name = "provider_id", length = 255)
     private String providerId;
 
+    // Papel no marketplace: null (nunca respondeu), "FAN" ou "PRODUCER"
+    @Column(name = "marketplace_role", length = 20)
+    private String marketplaceRole;
+
     // Conta ativa? Podemos desativar sem apagar
     @Column(nullable = false)
     private boolean enabled = true;
@@ -136,6 +140,9 @@ public class User {
 
     public String getProviderId() { return providerId; }
     public void setProviderId(String providerId) { this.providerId = providerId; }
+
+    public String getMarketplaceRole() { return marketplaceRole; }
+    public void setMarketplaceRole(String marketplaceRole) { this.marketplaceRole = marketplaceRole; }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

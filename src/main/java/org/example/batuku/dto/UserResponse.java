@@ -25,6 +25,7 @@ public class UserResponse {
     private String spotifyArtistId; // null se o perfil ainda não está ligado ao Spotify
     private String bio;
     private String location;
+    private String marketplaceRole;
 
     // Construtor privado — obriga a usar o método estático
     private UserResponse() {}
@@ -47,6 +48,7 @@ public class UserResponse {
         r.spotifyArtistId  = spotifyArtistId;
         r.bio              = user.getBio();
         r.location         = user.getLocation();
+        r.marketplaceRole  = user.getMarketplaceRole();
         return r;
     }
 
@@ -64,4 +66,5 @@ public class UserResponse {
     public String getSpotifyArtistId() { return spotifyArtistId; }
     public String getBio() { return bio; }
     public String getLocation() { return location; }
+    public String getMarketplaceRole() { return marketplaceRole; }
 }

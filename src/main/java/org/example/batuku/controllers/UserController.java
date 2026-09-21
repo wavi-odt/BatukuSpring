@@ -135,6 +135,30 @@ public class UserController {
     }
 
     /**
+     * POST /api/users/me/marketplace-role
+     * Define o papel do utilizador no marketplace (FAN ou PRODUCER).
+     * Só pode ser definido uma vez — permanente.
+     */
+    @PostMapping("/me/marketplace-role")
+    public ResponseEntity<?> setMarketplaceRole(
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        if (user.getMarketplaceRole() != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Papel no marketplace já definido."));
+        }
+        String role = body.getOrDefault("role", "").toUpperCase();
+        if (!role.equals("FAN") && !role.equals("PRODUCER")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Papel inválido."));
+        }
+        user.setMarketplaceRole(role);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("marketplaceRole", role));
+    }
+
+    /**
      * GET /api/users/me/recently-played
      * Devolve as últimas faixas únicas ouvidas pelo utilizador autenticado.
      * Formato: [{ trackId, title, coverUrl, artistName, artistId }]

@@ -8,9 +8,11 @@ import org.example.batuku.dto.CreateTrackRequest;
 import org.example.batuku.dto.TrackDetailResponse;
 import org.example.batuku.dto.TrackResponse;
 import org.example.batuku.repository.AlbumTrackRepository;
+import org.example.batuku.repository.ArtistFollowRepository;
 import org.example.batuku.repository.LikeRepository;
 import org.example.batuku.repository.PlayRepository;
 import org.example.batuku.repository.CommentRepository;
+import org.example.batuku.repository.TrackRepository;
 import org.example.batuku.services.TrackService;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.HttpStatus;
@@ -32,23 +34,29 @@ import java.util.Map;
 public class TrackController {
 
     private final TrackService trackService;
+    private final TrackRepository trackRepository;
     private final LikeRepository likeRepository;
     private final PlayRepository playRepository;
     private final CommentRepository commentRepository;
     private final AlbumTrackRepository albumTrackRepository;
+    private final ArtistFollowRepository artistFollowRepository;
     private final JwtUserDetailsService jwtUserDetailsService;
 
     public TrackController(TrackService trackService,
+                           TrackRepository trackRepository,
                            LikeRepository likeRepository,
                            PlayRepository playRepository,
                            CommentRepository commentRepository,
                            AlbumTrackRepository albumTrackRepository,
+                           ArtistFollowRepository artistFollowRepository,
                            JwtUserDetailsService jwtUserDetailsService) {
         this.trackService = trackService;
+        this.trackRepository = trackRepository;
         this.likeRepository = likeRepository;
         this.playRepository = playRepository;
         this.commentRepository = commentRepository;
         this.albumTrackRepository = albumTrackRepository;
+        this.artistFollowRepository = artistFollowRepository;
         this.jwtUserDetailsService = jwtUserDetailsService;
     }
 
@@ -138,6 +146,23 @@ public class TrackController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    /** GET /api/tracks/following — faixas recentes publicadas pelos artistas que o utilizador segue. */
+    @GetMapping("/following")
+    public ResponseEntity<List<TrackResponse>> getFollowingTracks(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        List<Long> artistIds = artistFollowRepository.findByFollowerIdOrderByCreatedAtDesc(user.getId())
+                .stream().map(f -> f.getArtistProfile().getId()).toList();
+        if (artistIds.isEmpty()) return ResponseEntity.ok(List.of());
+        List<Track> tracks = trackRepository.findTop20ByArtistProfileIdInAndIsPublishedTrueOrderByCreatedAtDesc(artistIds);
+        return ResponseEntity.ok(tracks.stream()
+                .map(t -> TrackResponse.from(t,
+                        likeRepository.countByTrackId(t.getId()),
+                        playRepository.countByTrackId(t.getId()),
+                        0L))
+                .toList());
     }
 
     @GetMapping("/artist/{artistProfileId}")

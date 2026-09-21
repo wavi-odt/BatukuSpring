@@ -72,6 +72,10 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/follows/followers/**", "/api/follows/following/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/**", "/api/artists/**", "/api/search").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/discord/events").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/shared/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/shared-project/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/marketplace/beats", "/api/marketplace/beats/featured",
+                        "/api/marketplace/genres", "/api/marketplace/stats", "/api/marketplace/producers").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2

@@ -23,6 +23,9 @@ public class Purchase {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
+    @Column(name = "license_type", nullable = false, length = 20)
+    private String licenseType = "LEASE";
+
     @Column(name = "purchased_at", nullable = false, updatable = false)
     private LocalDateTime purchasedAt = LocalDateTime.now();
 
@@ -36,6 +39,9 @@ public class Purchase {
 
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
+
+    public String getLicenseType() { return licenseType; }
+    public void setLicenseType(String licenseType) { this.licenseType = licenseType; }
 
     public LocalDateTime getPurchasedAt() { return purchasedAt; }
 }
