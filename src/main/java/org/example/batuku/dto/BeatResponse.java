@@ -20,6 +20,7 @@ public class BeatResponse {
     private boolean isNew;
     private boolean isFeatured;
     private boolean exclusiveNegotiable;
+    private boolean soldExclusively;
     private String desc;
 
     public static class Prices {
@@ -69,6 +70,9 @@ public class BeatResponse {
     public void setFeatured(boolean f)                  { this.isFeatured = f; }
     public boolean isExclusiveNegotiable()              { return exclusiveNegotiable; }
     public void setExclusiveNegotiable(boolean n)       { this.exclusiveNegotiable = n; }
+    @JsonProperty("soldExclusively")
+    public boolean isSoldExclusively()                  { return soldExclusively; }
+    public void setSoldExclusively(boolean s)           { this.soldExclusively = s; }
     public String getDesc()                             { return desc; }
     public void setDesc(String d)                       { this.desc = d; }
 }

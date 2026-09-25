@@ -180,26 +180,13 @@ public class TrackController {
     }
 
     @GetMapping("/{id}")
-    public TrackDetailResponse getTrack(@PathVariable Long id) {
+    public TrackResponse getTrack(@PathVariable Long id) {
         Track t = trackService.findById(id);
-        ArtistProfile profile = t.getArtistProfile();
-
-        String genre = null;
-        if (t.getGenre() != null) {
-            genre = t.getGenre().getName();
-        } else if (profile.getGenres() != null && !profile.getGenres().isEmpty()) {
-            genre = profile.getGenres().get(0);
-        }
-
-        return new TrackDetailResponse(
-                t.getId(),
-                t.getTitle(),
-                profile.getName(),
-                profile.getId(),
-                t.getCoverUrl(),
-                genre,
-                SearchController.formatDuration(t.getDurationMs()),
-                likeRepository.countByTrackId(t.getId())
-        );
+        TrackResponse r = TrackResponse.from(t,
+                likeRepository.countByTrackId(t.getId()),
+                playRepository.countByTrackId(t.getId()),
+                commentRepository.countByTrackId(t.getId()));
+        r.setBelongsToRelease(albumTrackRepository.existsByTrackId(t.getId()));
+        return r;
     }
 }

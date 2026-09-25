@@ -10,6 +10,7 @@ public record ArtistDetailResponse(
         String city,
         String bio,
         long followers,
+        long monthlyListeners,
         int tracksCount,
         List<TrackItem> tracks,
         List<String> genres,

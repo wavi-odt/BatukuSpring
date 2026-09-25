@@ -91,7 +91,11 @@ public class GamificationService {
 
     @Transactional
     public void adicionarPontos(User user, PointTransaction.ActionType actionType, Long referenceId) {
-        int ganhos = POINTS.getOrDefault(actionType, 0);
+        adicionarPontos(user, actionType, POINTS.getOrDefault(actionType, 0), referenceId);
+    }
+
+    @Transactional
+    public void adicionarPontos(User user, PointTransaction.ActionType actionType, int ganhos, Long referenceId) {
         if (ganhos == 0) return;
 
         UserPoints up = userPointsRepository.findByUserId(user.getId())
@@ -104,6 +108,7 @@ public class GamificationService {
                     return novo;
                 });
 
+        int nivelAnterior = up.getLevel();
         int novoTotal = up.getTotalPoints() + ganhos;
         up.setTotalPoints(novoTotal);
         up.setExperiencePoints(calcularXpNivel(novoTotal));
@@ -117,6 +122,11 @@ public class GamificationService {
         tx.setPoints(ganhos);
         tx.setReferenceId(referenceId);
         transactionRepository.save(tx);
+
+        if (up.getLevel() > nivelAnterior) {
+            notificationService.notify(user, Notification.NotificationType.LEVEL_UP, null,
+                    "Subiste para o Nível " + up.getLevel() + "! 🏆");
+        }
 
         verificarBadges(user, up);
     }
@@ -160,17 +170,20 @@ public class GamificationService {
 
     @Transactional(readOnly = true)
     public LeaderboardResponse obterLeaderboard(int limit) {
-        List<UserPoints> top = userPointsRepository
-                .findTopByOrderByTotalPointsDesc(PageRequest.of(0, limit));
+        // Buscar mais entradas do que o limite para compensar os artistas filtrados
+        List<UserPoints> all = userPointsRepository
+                .findTopByOrderByTotalPointsDesc(PageRequest.of(0, limit * 3));
 
         List<LeaderboardResponse.EntryDto> entries = new java.util.ArrayList<>();
         long currentRank = 1;
-        for (int i = 0; i < top.size(); i++) {
-            UserPoints up = top.get(i);
+        int  fanIndex    = 0;
 
-            // Empate: só avança o rank quando os pontos diminuem
-            if (i > 0 && up.getTotalPoints() < top.get(i - 1).getTotalPoints()) {
-                currentRank = i + 1;
+        for (UserPoints up : all) {
+            if (entries.size() >= limit) break;
+            if (up.getUser().getUserRole() == User.UserRole.ARTIST) continue;
+
+            if (fanIndex > 0 && up.getTotalPoints() < getPreviousFanPoints(entries)) {
+                currentRank = entries.size() + 1;
             }
 
             int badgeCount = userBadgeRepository.findByUserId(up.getUser().getId()).size();
@@ -185,6 +198,7 @@ public class GamificationService {
             entry.setLevel(up.getLevel());
             entry.setBadgeCount(badgeCount);
             entries.add(entry);
+            fanIndex++;
         }
 
         LeaderboardResponse resp = new LeaderboardResponse();
@@ -192,47 +206,95 @@ public class GamificationService {
         return resp;
     }
 
-    /* ── Desafios com progresso real ────────────────────────────── */
+    private int getPreviousFanPoints(List<LeaderboardResponse.EntryDto> entries) {
+        if (entries.isEmpty()) return Integer.MAX_VALUE;
+        return entries.get(entries.size() - 1).getTotalPoints();
+    }
+
+    /* ── Desafios rotativos ─────────────────────────────────────── */
+
+    private static final int TOTAL_SETS = 3;
 
     @Transactional(readOnly = true)
     public List<ChallengeResponse> obterDesafios(Long userId) {
-        LocalDateTime inicioDia     = LocalDate.now().atStartOfDay();
-        LocalDateTime inicioSemana  = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).atStartOfDay();
-        LocalDate     fimSemana     = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
+        int setIndex = user.getChallengeSetOffset() % TOTAL_SETS;
+        return construirSet(userId, setIndex);
+    }
 
+    @Transactional
+    public List<ChallengeResponse> avancarDesafios(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
+        int setIndex = user.getChallengeSetOffset() % TOTAL_SETS;
+        List<ChallengeResponse> atual = construirSet(userId, setIndex);
+        boolean todosCompletos = atual.stream().allMatch(ChallengeResponse::isCompleted);
+        if (!todosCompletos) return null;
+
+        // Atribuir os pontos exactos de cada desafio completo
+        int totalXp = atual.stream().mapToInt(ChallengeResponse::getXp).sum();
+        adicionarPontos(user, PointTransaction.ActionType.MISSION_COMPLETE, totalXp, null);
+
+        // Notificar conclusão do conjunto
+        notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
+                "Completaste todos os desafios do conjunto " + (setIndex + 1) + "! +" + totalXp + " pts");
+
+        user.setChallengeSetOffset(user.getChallengeSetOffset() + 1);
+        userRepository.save(user);
+        int novoSet = user.getChallengeSetOffset() % TOTAL_SETS;
+        return construirSet(userId, novoSet);
+    }
+
+    private List<ChallengeResponse> construirSet(Long userId, int setIndex) {
+        LocalDateTime inicioDia    = LocalDate.now().atStartOfDay();
+        LocalDateTime inicioSemana = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).atStartOfDay();
+        LocalDate     fimSemana    = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
         String expiraSemana = expiracao(fimSemana);
         String expiraHoje   = expiracao(LocalDate.now());
 
-        // 1. Maratonista — 60 minutos hoje
-        long msHoje      = playRepository.sumDurationPlayedSince(userId, inicioDia);
-        int  minutosHoje = (int) Math.min(60, msHoje / 60_000);
-
-        // 2. Comentador — 3 comentários esta semana
-        int comentarios = (int) Math.min(3, commentRepository.countByUserIdAndCreatedAtAfter(userId, inicioSemana));
-
-        // 3. Descobridor Semanal — 5 artistas distintos esta semana
-        int artistas = (int) Math.min(5, playRepository.countDistinctArtistsSince(userId, inicioSemana));
-
-        // 4. Seguidor Ativo — 2 novos follows esta semana
-        int follows = (int) Math.min(2, artistFollowRepository.countByFollowerIdAndCreatedAtAfter(userId, inicioSemana));
-
-        // 5. Streak — dias consecutivos (últimos 30 dias)
+        long msHoje    = playRepository.sumDurationPlayedSince(userId, inicioDia);
+        int  minHoje   = (int)(msHoje / 60_000);
+        int  comentSem = (int) commentRepository.countByUserIdAndCreatedAtAfter(userId, inicioSemana);
+        int  comentHoje= (int) commentRepository.countByUserIdAndCreatedAtAfter(userId, inicioDia);
+        int  artSem    = (int) playRepository.countDistinctArtistsSince(userId, inicioSemana);
+        int  artHoje   = (int) playRepository.countDistinctArtistsSince(userId, inicioDia);
+        int  follows   = (int) artistFollowRepository.countByFollowerIdAndCreatedAtAfter(userId, inicioSemana);
+        int  likesSem  = (int) likeRepository.countByUserIdAndCreatedAtAfter(userId, inicioSemana);
         List<java.sql.Date> datas = playRepository.findDistinctPlayDatesSince(userId, LocalDateTime.now().minusDays(31));
         int streak = calcularStreak(datas);
-        int streakTotal = 14;
-
-        // 6. Colecionador — 5 likes esta semana
-        int likes = (int) Math.min(5, likeRepository.countByUserIdAndCreatedAtAfter(userId, inicioSemana));
 
         List<ChallengeResponse> lista = new java.util.ArrayList<>();
-        lista.add(desafio("ch-marathon",  "🎧", "Maratonista",         "Ouve 60 minutos de música hoje",           minutosHoje, 60,         200, expiraHoje,   minutosHoje >= 60));
-        lista.add(desafio("ch-comment",   "💬", "Comentador",          "Deixa 3 comentários esta semana",          comentarios, 3,          100, expiraSemana, comentarios >= 3));
-        lista.add(desafio("ch-discover",  "🧭", "Descobridor Semanal", "Ouve faixas de 5 artistas esta semana",   artistas,    5,          150, expiraSemana, artistas >= 5));
-        lista.add(desafio("ch-follow",    "❤️",  "Seguidor Ativo",      "Segue 2 novos artistas esta semana",      follows,     2,          80,  expiraSemana, follows >= 2));
-        lista.add(desafio("ch-streak",    "🔥", "Streak " + streakTotal, "Mantém o streak por " + streakTotal + " dias seguidos", Math.min(streak, streakTotal), streakTotal, 180, null, streak >= streakTotal));
-        lista.add(desafio("ch-collector", "⭐", "Colecionador",        "Dá like em 5 faixas esta semana",         likes,       5,          120, expiraSemana, likes >= 5));
+        switch (setIndex) {
+            case 0 -> {
+                lista.add(desafio("ch-marathon",  "🎧", "Maratonista",         "Ouve 60 minutos de música hoje",            cap(minHoje,60),  60,  200, expiraHoje,   minHoje  >= 60,  setIndex));
+                lista.add(desafio("ch-comment",   "💬", "Comentador",          "Deixa 3 comentários esta semana",           cap(comentSem,3), 3,   100, expiraSemana, comentSem>= 3,   setIndex));
+                lista.add(desafio("ch-discover",  "🧭", "Descobridor Semanal", "Ouve faixas de 5 artistas esta semana",    cap(artSem,5),    5,   150, expiraSemana, artSem   >= 5,   setIndex));
+                lista.add(desafio("ch-follow",    "❤️",  "Seguidor Ativo",      "Segue 2 novos artistas esta semana",       cap(follows,2),   2,   80,  expiraSemana, follows  >= 2,   setIndex));
+                lista.add(desafio("ch-streak7",   "🔥", "Streak 7",            "Mantém o streak por 7 dias seguidos",      cap(streak,7),    7,   180, null,         streak   >= 7,   setIndex));
+                lista.add(desafio("ch-collector", "⭐", "Colecionador",        "Dá like em 5 faixas esta semana",          cap(likesSem,5),  5,   120, expiraSemana, likesSem >= 5,   setIndex));
+            }
+            case 1 -> {
+                lista.add(desafio("ch-vip",       "🎧", "Ouvinte VIP",         "Ouve 90 minutos de música hoje",            cap(minHoje,90),  90,  280, expiraHoje,   minHoje  >= 90,  setIndex));
+                lista.add(desafio("ch-critic",    "💬", "Crítico Cultural",    "Deixa 5 comentários esta semana",           cap(comentSem,5), 5,   160, expiraSemana, comentSem>= 5,   setIndex));
+                lista.add(desafio("ch-explorer",  "🧭", "Explorador Total",    "Ouve faixas de 8 artistas esta semana",    cap(artSem,8),    8,   210, expiraSemana, artSem   >= 8,   setIndex));
+                lista.add(desafio("ch-ambassador","❤️",  "Embaixador",          "Segue 3 novos artistas esta semana",       cap(follows,3),   3,   120, expiraSemana, follows  >= 3,   setIndex));
+                lista.add(desafio("ch-streak14",  "🔥", "Streak 14",           "Mantém o streak por 14 dias seguidos",     cap(streak,14),   14,  350, null,         streak   >= 14,  setIndex));
+                lista.add(desafio("ch-superfan",  "⭐", "Super Fã",            "Dá like em 10 faixas esta semana",         cap(likesSem,10), 10,  200, expiraSemana, likesSem >= 10,  setIndex));
+            }
+            default -> {
+                lista.add(desafio("ch-ultra",     "🎧", "Maratonista Plus",    "Ouve 2 horas de música hoje",               cap(minHoje,120), 120, 400, expiraHoje,   minHoje  >= 120, setIndex));
+                lista.add(desafio("ch-daily-com", "💬", "Comentador Diário",   "Deixa 1 comentário hoje",                   cap(comentHoje,1),1,   80,  expiraHoje,   comentHoje>= 1,  setIndex));
+                lista.add(desafio("ch-daily-art", "🧭", "Curioso do Dia",      "Ouve faixas de 3 artistas hoje",            cap(artHoje,3),   3,   130, expiraHoje,   artHoje  >= 3,   setIndex));
+                lista.add(desafio("ch-connector", "❤️",  "Conector",            "Segue 4 novos artistas esta semana",       cap(follows,4),   4,   160, expiraSemana, follows  >= 4,   setIndex));
+                lista.add(desafio("ch-streak21",  "🔥", "Streak 21",           "Mantém o streak por 21 dias seguidos",     cap(streak,21),   21,  500, null,         streak   >= 21,  setIndex));
+                lista.add(desafio("ch-likefest",  "⭐", "Like Fest",           "Dá like em 8 faixas esta semana",          cap(likesSem,8),  8,   160, expiraSemana, likesSem >= 8,   setIndex));
+            }
+        }
         return lista;
     }
+
+    private static int cap(int value, int max) { return Math.min(value, max); }
 
     /* ── Milestones acumulados ───────────────────────────────────── */
 
@@ -311,7 +373,7 @@ public class GamificationService {
     }
 
     private ChallengeResponse desafio(String id, String icon, String title, String desc,
-                                      int progress, int total, int xp, String expires, boolean completed) {
+                                      int progress, int total, int xp, String expires, boolean completed, int setIndex) {
         ChallengeResponse c = new ChallengeResponse();
         c.setId(id);
         c.setIcon(icon);
@@ -322,6 +384,8 @@ public class GamificationService {
         c.setXp(xp);
         c.setExpires(expires);
         c.setCompleted(completed);
+        c.setSetIndex(setIndex);
+        c.setTotalSets(TOTAL_SETS);
         return c;
     }
 

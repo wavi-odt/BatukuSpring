@@ -113,7 +113,7 @@ public class SpotifyClient {
     public List<SpotifyTrack> getTopTracks(String artistId) {
         return executeWithRetry("get top tracks for " + artistId, () -> {
             SpotifyTopTracksResponse r = restClient.get()
-                    .uri("https://api.spotify.com/v1/artists/{id}/top-tracks?market={market}", artistId, market)
+                    .uri("https://api.spotify.com/v1/artists/{id}/top-tracks", artistId)
                     .header("Authorization", "Bearer " + accessToken())
                     .retrieve()
                     .body(SpotifyTopTracksResponse.class);
@@ -122,7 +122,7 @@ public class SpotifyClient {
     }
 
     public List<SpotifyTrack> searchTracksByArtistName(String artistName, int limit) {
-        String query = "artist:\"" + artistName + "\"";
+        String query = artistName;
         return executeWithRetry("track search for artist " + artistName, () -> {
             SpotifyTrackSearchResponse r = restClient.get()
                     .uri("https://api.spotify.com/v1/search?q={q}&type=track&limit={limit}", query, limit)
@@ -139,22 +139,26 @@ public class SpotifyClient {
         return attemptCall(operation, call, true);
     }
 
-    private <T> T attemptCall(String operation, Supplier<T> call, boolean retryOn429) {
+    private <T> T attemptCall(String operation, Supplier<T> call, boolean retryOn403) {
         try {
             return call.get();
         } catch (SpotifyApiException e) {
             throw e;
         } catch (RestClientResponseException e) {
             SpotifyApiException se = toSpotifyException(operation, e);
-            if (retryOn429 && se.getHttpStatus() == 429 && se.getRetryAfterMs() > 0) {
-                log.warn("Spotify rate-limited on '{}'; waiting {}ms before retry", operation, se.getRetryAfterMs());
-                try {
-                    Thread.sleep(se.getRetryAfterMs());
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw se;
-                }
+            if (retryOn403 && se.getHttpStatus() == 403) {
+                log.warn("Spotify 403 on '{}' — body: {} — forcing token refresh and retrying once",
+                        operation, e.getResponseBodyAsString());
+                synchronized (this) { cachedToken = null; }
                 return attemptCall(operation, call, false);
+            }
+            if (!retryOn403 && se.getHttpStatus() == 403) {
+                log.warn("Spotify 403 persists after token refresh on '{}' — body: {}",
+                        operation, e.getResponseBodyAsString());
+            }
+            // 429 ou outro erro: falhar imediatamente sem bloquear o thread
+            if (se.getHttpStatus() == 429) {
+                log.warn("Spotify rate-limited on '{}' — returning empty immediately", operation);
             }
             throw se;
         } catch (RestClientException e) {

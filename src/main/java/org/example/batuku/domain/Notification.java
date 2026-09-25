@@ -33,7 +33,8 @@ public class Notification {
 
     public enum NotificationType {
         LIKE, FOLLOW, COMMENT, BADGE, SYSTEM,
-        OFFER_RECEIVED, OFFER_ACCEPTED, OFFER_REJECTED, BEAT_PURCHASED
+        OFFER_RECEIVED, OFFER_ACCEPTED, OFFER_REJECTED, BEAT_PURCHASED,
+        CHALLENGE_COMPLETED, LEVEL_UP
     }
 
     public Long getId() { return id; }

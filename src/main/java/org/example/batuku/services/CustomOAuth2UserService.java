@@ -15,7 +15,6 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -29,19 +28,21 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final RoleRepository roleRepository;
     private final DiscordAccountRepository discordAccountRepository;
     private final GamificationService gamificationService;
+    private final EmailService emailService;
 
     public CustomOAuth2UserService(UserRepository userRepository,
                                    RoleRepository roleRepository,
                                    DiscordAccountRepository discordAccountRepository,
-                                   GamificationService gamificationService) {
-        this.userRepository       = userRepository;
-        this.roleRepository       = roleRepository;
+                                   GamificationService gamificationService,
+                                   EmailService emailService) {
+        this.userRepository           = userRepository;
+        this.roleRepository           = roleRepository;
         this.discordAccountRepository = discordAccountRepository;
-        this.gamificationService  = gamificationService;
+        this.gamificationService      = gamificationService;
+        this.emailService             = emailService;
     }
 
     @Override
-    @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
 
@@ -55,15 +56,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             );
         }
 
-        User user = findOrCreateUser(registrationId, userInfo);
-        if ("discord".equals(registrationId)) {
-            syncDiscordAccount(user, (DiscordOAuth2UserInfo) userInfo);
+        try {
+            User user = findOrCreateUser(registrationId, userInfo);
+            if ("discord".equals(registrationId)) {
+                syncDiscordAccount(user, (DiscordOAuth2UserInfo) userInfo);
+            }
+        } catch (Exception e) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("server_error"), e.getMessage(), e);
         }
         return oAuth2User;
     }
 
     private User findOrCreateUser(String provider, OAuth2UserInfo userInfo) {
-        // 1. Conta OAuth2 já existente para este provedor + ID externo
         Optional<User> byProvider = userRepository.findByProviderAndProviderId(provider, userInfo.getId());
         if (byProvider.isPresent()) {
             User user = byProvider.get();
@@ -72,7 +76,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return userRepository.save(user);
         }
 
-        // 2. Email já existe com conta local — liga o provedor OAuth2
         Optional<User> byEmail = userRepository.findByEmail(userInfo.getEmail().trim().toLowerCase());
         if (byEmail.isPresent()) {
             User user = byEmail.get();
@@ -85,7 +88,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return userRepository.save(user);
         }
 
-        // 3. Utilizador novo — criar conta automaticamente
         return createUser(provider, userInfo);
     }
 
@@ -106,7 +108,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setEnabled(true);
 
         User saved = userRepository.save(user);
-        gamificationService.inicializarPontos(saved);
+        try { gamificationService.inicializarPontos(saved); } catch (Exception ignored) {}
+        try { emailService.sendWelcomeEmail(saved); } catch (Exception ignored) {}
         return saved;
     }
 

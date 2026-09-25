@@ -43,17 +43,18 @@ public class SearchController {
         // ── Artistas ────────────────────────────────────────────────────────
         List<ArtistProfile> allArtists = artistProfileRepository.findTop5ByNameContainingIgnoreCase(term);
 
-        // Claimed = ligados a um utilizador real
-        List<ArtistProfile> claimedArtists   = allArtists.stream()
-                .filter(a -> a.isClaimed() && a.getUser() != null)
+        // Ligados a um utilizador real (independentemente de claimed)
+        List<ArtistProfile> linkedArtists   = allArtists.stream()
+                .filter(a -> a.getUser() != null)
                 .toList();
-        List<ArtistProfile> unclaimedArtists = allArtists.stream()
-                .filter(a -> !a.isClaimed() || a.getUser() == null)
+        // Sem utilizador = importados pelo admin, disponíveis para reclamar
+        List<ArtistProfile> unlinkedArtists = allArtists.stream()
+                .filter(a -> a.getUser() == null)
                 .toList();
 
-        // userId → artistProfileId para artistas claimed
-        Map<Long, Long> userToArtist = claimedArtists.stream()
-                .collect(Collectors.toMap(a -> a.getUser().getId(), ArtistProfile::getId));
+        // userId → ArtistProfile para artistas com utilizador ligado
+        Map<Long, ArtistProfile> userToArtistProfile = new java.util.HashMap<>(linkedArtists.stream()
+                .collect(Collectors.toMap(a -> a.getUser().getId(), a -> a)));
 
         // ── Utilizadores ────────────────────────────────────────────────────
         List<User> rawUsers = userRepository
@@ -61,27 +62,35 @@ public class SearchController {
 
         Set<Long> rawUserIds = rawUsers.stream().map(User::getId).collect(Collectors.toSet());
 
+        // Garante que temos perfis de artista para todos os utilizadores encontrados,
+        // mesmo que o seu perfil não tenha aparecido no top5 da pesquisa por nome.
+        artistProfileRepository.findByUserIdIn(new ArrayList<>(rawUserIds))
+                .forEach(ap -> userToArtistProfile.putIfAbsent(ap.getUser().getId(), ap));
+
         List<SearchResponse.UserResult> users = new ArrayList<>();
 
         // Utilizadores encontrados pela pesquisa de nome/username
         for (User u : rawUsers) {
-            Long artistProfileId = userToArtist.get(u.getId());
+            ArtistProfile ap = userToArtistProfile.get(u.getId());
+            String imageUrl = u.getAvatarUrl() != null ? u.getAvatarUrl() : (ap != null ? ap.getImageUrl() : null);
             users.add(new SearchResponse.UserResult(
-                    u.getId(), u.getName(), "@" + u.getUsername(), u.getAvatarUrl(), artistProfileId));
+                    u.getId(), u.getName(), "@" + u.getUsername(), imageUrl,
+                    ap != null ? ap.getId() : null));
         }
 
-        // Artistas claimed cujo utilizador NÃO apareceu na pesquisa por nome
+        // Artistas com utilizador ligado cujo utilizador NÃO apareceu na pesquisa por nome
         // (o nome do artista bate com o termo mas o nome do utilizador não)
-        for (ArtistProfile a : claimedArtists) {
+        for (ArtistProfile a : linkedArtists) {
             User u = a.getUser();
             if (!rawUserIds.contains(u.getId())) {
+                String imageUrl = u.getAvatarUrl() != null ? u.getAvatarUrl() : a.getImageUrl();
                 users.add(new SearchResponse.UserResult(
-                        u.getId(), u.getName(), "@" + u.getUsername(), u.getAvatarUrl(), a.getId()));
+                        u.getId(), u.getName(), "@" + u.getUsername(), imageUrl, a.getId()));
             }
         }
 
         // ── Resultado final ──────────────────────────────────────────────────
-        List<SearchResponse.ArtistResult> artists = unclaimedArtists.stream()
+        List<SearchResponse.ArtistResult> artists = unlinkedArtists.stream()
                 .map(this::toArtistResult)
                 .toList();
 

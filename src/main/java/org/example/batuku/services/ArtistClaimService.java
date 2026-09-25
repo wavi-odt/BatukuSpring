@@ -7,6 +7,7 @@ import org.example.batuku.dto.ArtistClaimDetailResponse;
 import org.example.batuku.dto.ArtistClaimResponse;
 import org.example.batuku.repository.ArtistClaimRequestRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
+import org.example.batuku.repository.UserRepository;
 import org.example.batuku.storage.FileCategory;
 import org.example.batuku.storage.FileStorageService;
 import org.springframework.stereotype.Service;
@@ -23,17 +24,20 @@ public class ArtistClaimService {
 
     private final ArtistClaimRequestRepository claimRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final UserRepository userRepository;
     private final FileStorageService storageService;
     private final EmailService emailService;
     private final SpotifyClient spotifyClient;
 
     public ArtistClaimService(ArtistClaimRequestRepository claimRepository,
                                ArtistProfileRepository artistProfileRepository,
+                               UserRepository userRepository,
                                FileStorageService storageService,
                                EmailService emailService,
                                SpotifyClient spotifyClient) {
         this.claimRepository = claimRepository;
         this.artistProfileRepository = artistProfileRepository;
+        this.userRepository = userRepository;
         this.storageService = storageService;
         this.emailService = emailService;
         this.spotifyClient = spotifyClient;
@@ -108,20 +112,47 @@ public class ArtistClaimService {
         claim.setReviewedBy(admin);
         claim.setReviewedAt(LocalDateTime.now());
 
-        ArtistProfile profile = claim.getArtistProfile();
-        profile.setClaimed(true);
-        profile.setUser(claim.getUser());
-        if (claim.getSpotifyArtistId() != null) {
-            profile.setSpotifyArtistId(claim.getSpotifyArtistId());
-        }
-        if (claim.getSpotifyArtistName() != null) {
-            profile.setName(claim.getSpotifyArtistName());
-        }
-        if (claim.getSpotifyArtistImageUrl() != null) {
-            profile.setImageUrl(claim.getSpotifyArtistImageUrl());
+        ArtistProfile autoCreated = claim.getArtistProfile();
+
+        // Se existe um perfil importado pelo admin com este Spotify ID, faz merge:
+        // liga o utilizador a esse perfil e elimina o perfil vazio criado no registo.
+        ArtistProfile imported = claim.getSpotifyArtistId() != null
+                ? artistProfileRepository.findBySpotifyArtistId(claim.getSpotifyArtistId())
+                        .filter(p -> p.getUser() == null)
+                        .orElse(null)
+                : null;
+
+        ArtistProfile finalProfile;
+        if (imported != null) {
+            imported.setClaimed(true);
+            imported.setUser(claim.getUser());
+            if (claim.getSpotifyArtistName() != null)     imported.setName(claim.getSpotifyArtistName());
+            if (claim.getSpotifyArtistImageUrl() != null) imported.setImageUrl(claim.getSpotifyArtistImageUrl());
+            finalProfile = artistProfileRepository.save(imported);
+
+            // Aponta o claim para o perfil correto antes de apagar o vazio
+            claim.setArtistProfile(finalProfile);
+            claimRepository.save(claim);
+            artistProfileRepository.delete(autoCreated);
+        } else {
+            autoCreated.setClaimed(true);
+            autoCreated.setUser(claim.getUser());
+            if (claim.getSpotifyArtistId() != null)       autoCreated.setSpotifyArtistId(claim.getSpotifyArtistId());
+            if (claim.getSpotifyArtistName() != null)     autoCreated.setName(claim.getSpotifyArtistName());
+            if (claim.getSpotifyArtistImageUrl() != null) autoCreated.setImageUrl(claim.getSpotifyArtistImageUrl());
+            finalProfile = autoCreated;
         }
 
-        return toDetailResponse(claimRepository.save(claim));
+        // Ativa a conta se estava pendente de validação
+        User claimant = claim.getUser();
+        if (!claimant.isEnabled()) {
+            claimant.setEnabled(true);
+            userRepository.save(claimant);
+        }
+
+        ArtistClaimDetailResponse response = toDetailResponse(claimRepository.save(claim));
+        try { emailService.sendClaimVerifiedEmail(claimant, finalProfile); } catch (Exception ignored) {}
+        return response;
     }
 
     @Transactional

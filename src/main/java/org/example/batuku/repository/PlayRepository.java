@@ -34,6 +34,12 @@ public interface PlayRepository extends JpaRepository<Play, Long> {
                    "GROUP BY p.referrer_url ORDER BY COUNT(*) DESC", nativeQuery = true)
     List<Object[]> findSourceBreakdownByArtist(@Param("artistId") Long artistId, @Param("since") LocalDateTime since);
 
+    @Query(value = "SELECT COUNT(DISTINCT p.user_id) FROM plays p " +
+                   "INNER JOIN tracks t ON p.track_id = t.id " +
+                   "WHERE t.artist_profile_id = :artistProfileId AND p.played_at >= :since",
+           nativeQuery = true)
+    long countDistinctListenersByArtistSince(@Param("artistProfileId") Long artistProfileId, @Param("since") LocalDateTime since);
+
     /* ── Queries de gamificação ────────────────────────────────────── */
 
     @Query(value = "SELECT COALESCE(SUM(p.duration_played), 0) FROM plays p " +
@@ -90,12 +96,12 @@ public interface PlayRepository extends JpaRepository<Play, Long> {
                    "GROUP BY g.name ORDER BY plays DESC LIMIT 5", nativeQuery = true)
     List<Object[]> findTopGenresByUser(@Param("userId") Long userId);
 
-    @Query(value = "SELECT p.track_id, t.title, t.cover_url, ap.name, ap.id, MAX(p.played_at) AS last_played " +
+    @Query(value = "SELECT p.track_id, t.title, t.cover_url, ap.name, ap.id, t.audio_url, t.source, t.spotify_url, MAX(p.played_at) AS last_played " +
                    "FROM plays p " +
                    "INNER JOIN tracks t ON p.track_id = t.id " +
                    "INNER JOIN artist_profiles ap ON t.artist_profile_id = ap.id " +
                    "WHERE p.user_id = :userId " +
-                   "GROUP BY p.track_id, t.title, t.cover_url, ap.name, ap.id " +
+                   "GROUP BY p.track_id, t.title, t.cover_url, ap.name, ap.id, t.audio_url, t.source, t.spotify_url " +
                    "ORDER BY last_played DESC LIMIT 10", nativeQuery = true)
     List<Object[]> findRecentlyPlayedByUser(@Param("userId") Long userId);
 }

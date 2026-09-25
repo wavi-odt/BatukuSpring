@@ -11,6 +11,8 @@ public class ChallengeResponse {
     private int     xp;
     private String  expires;
     private boolean completed;
+    private int     setIndex;
+    private int     totalSets;
 
     public String  getId()        { return id;        }
     public String  getIcon()      { return icon;      }
@@ -21,6 +23,8 @@ public class ChallengeResponse {
     public int     getXp()        { return xp;        }
     public String  getExpires()   { return expires;   }
     public boolean isCompleted()  { return completed; }
+    public int     getSetIndex()  { return setIndex;  }
+    public int     getTotalSets() { return totalSets; }
 
     public void setId(String id)             { this.id = id;             }
     public void setIcon(String icon)         { this.icon = icon;         }
@@ -31,4 +35,6 @@ public class ChallengeResponse {
     public void setXp(int xp)               { this.xp = xp;             }
     public void setExpires(String expires)   { this.expires = expires;   }
     public void setCompleted(boolean c)      { this.completed = c;       }
+    public void setSetIndex(int setIndex)    { this.setIndex = setIndex; }
+    public void setTotalSets(int totalSets)  { this.totalSets = totalSets; }
 }

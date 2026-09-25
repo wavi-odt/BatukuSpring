@@ -34,6 +34,11 @@ public class ArtistFollowController {
         return artistFollowService.listFollowed(user);
     }
 
+    @GetMapping("/user/{userId}")
+    public List<ArtistFollowResponse> listByUser(@PathVariable Long userId) {
+        return artistFollowService.listFollowedByUserId(userId);
+    }
+
     @GetMapping("/fans")
     public List<FanResponse> listFans(@AuthenticationPrincipal UserDetails userDetails) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());

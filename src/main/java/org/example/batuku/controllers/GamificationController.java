@@ -64,6 +64,18 @@ public class GamificationController {
         return ResponseEntity.ok(gamificationService.obterDesafios(user.getId()));
     }
 
+    /* POST /api/gamification/challenges/advance
+       Avança para o próximo conjunto se todos os desafios estiverem completos.
+       409 se ainda houver desafios incompletos. */
+    @PostMapping("/challenges/advance")
+    public ResponseEntity<List<ChallengeResponse>> advanceChallenges(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        List<ChallengeResponse> result = gamificationService.avancarDesafios(user.getId());
+        if (result == null) return ResponseEntity.status(409).build();
+        return ResponseEntity.ok(result);
+    }
+
     /* GET /api/gamification/milestones
        Estatísticas acumuladas do utilizador autenticado. */
     @GetMapping("/milestones")

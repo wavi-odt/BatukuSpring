@@ -12,6 +12,7 @@ public interface ArtistProfileRepository extends JpaRepository<ArtistProfile, Lo
     boolean existsBySpotifyArtistId(String spotifyArtistId);
     Optional<ArtistProfile> findBySpotifyArtistId(String spotifyArtistId);
     Optional<ArtistProfile> findByUserId(Long userId);
+    List<ArtistProfile> findByUserIdIn(List<Long> userIds);
     List<ArtistProfile> findTop5ByNameContainingIgnoreCase(String name);
 
     @Query("SELECT a.spotifyArtistId FROM ArtistProfile a WHERE a.spotifyArtistId IN :ids")

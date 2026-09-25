@@ -72,6 +72,9 @@ public class User {
     @Column(name = "marketplace_role", length = 20)
     private String marketplaceRole;
 
+    @Column(name = "challenge_set_offset", nullable = false)
+    private int challengeSetOffset = 0;
+
     // Conta ativa? Podemos desativar sem apagar
     @Column(nullable = false)
     private boolean enabled = true;
@@ -143,6 +146,9 @@ public class User {
 
     public String getMarketplaceRole() { return marketplaceRole; }
     public void setMarketplaceRole(String marketplaceRole) { this.marketplaceRole = marketplaceRole; }
+
+    public int getChallengeSetOffset() { return challengeSetOffset; }
+    public void setChallengeSetOffset(int challengeSetOffset) { this.challengeSetOffset = challengeSetOffset; }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

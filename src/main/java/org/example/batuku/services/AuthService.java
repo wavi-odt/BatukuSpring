@@ -28,17 +28,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final ArtistProfileRepository artistProfileRepository;
     private final GamificationService gamificationService;
+    private final EmailService emailService;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
                        ArtistProfileRepository artistProfileRepository,
-                       GamificationService gamificationService) {
-        this.userRepository       = userRepository;
-        this.roleRepository       = roleRepository;
-        this.passwordEncoder      = passwordEncoder;
+                       GamificationService gamificationService,
+                       EmailService emailService) {
+        this.userRepository          = userRepository;
+        this.roleRepository          = roleRepository;
+        this.passwordEncoder         = passwordEncoder;
         this.artistProfileRepository = artistProfileRepository;
-        this.gamificationService  = gamificationService;
+        this.gamificationService     = gamificationService;
+        this.emailService            = emailService;
     }
 
     /**
@@ -72,7 +75,7 @@ public class AuthService {
         user.setCountry(request.getCountry());
         user.setUserRole(userRole);          // papel de negócio
         user.setRoles(Set.of(springRole));   // role do Spring Security
-        user.setEnabled(true);
+        user.setEnabled(!wantsArtist);       // artistas ficam pendentes até validação admin
 
         User saved = userRepository.save(user);
         gamificationService.inicializarPontos(saved);
@@ -83,9 +86,12 @@ public class AuthService {
             profile.setImageUrl(saved.getAvatarUrl());
             profile.setSpotifyArtistId(null);
             profile.setSpotifyUrl(null);
-            profile.setClaimed(true);
+            profile.setClaimed(false);
             profile.setUser(saved);
             artistProfileRepository.save(profile);
+            try { emailService.sendArtistPendingEmail(saved); } catch (Exception ignored) {}
+        } else {
+            try { emailService.sendWelcomeEmail(saved); } catch (Exception ignored) {}
         }
 
         return saved;

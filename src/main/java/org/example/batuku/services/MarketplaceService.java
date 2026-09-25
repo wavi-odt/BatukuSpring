@@ -173,7 +173,7 @@ public class MarketplaceService {
         beat.setAudioUrl(audioUrl);
         beat.setCoverUrl(coverUrl);
         beat.setNew(isNew);
-        beat.setFeatured(isFeatured);
+        beat.setFeatured(isFeatured && producer.getUserRole() == User.UserRole.ADMIN);
         beat.setExclusiveNegotiable(exclusiveNegotiable);
 
         return toDto(beatRepository.save(beat));
@@ -260,10 +260,16 @@ public class MarketplaceService {
 
     @Transactional
     public BeatResponse editarBeat(Long userId, Long beatId, BeatEditRequest req) {
+        User editor = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
         Beat beat = beatRepository.findById(beatId)
                 .orElseThrow(() -> new RuntimeException("Beat não encontrado."));
-        if (beat.getProducer() == null || !beat.getProducer().getId().equals(userId)) {
+        boolean isAdmin = editor.getUserRole() == User.UserRole.ADMIN;
+        if (!isAdmin && (beat.getProducer() == null || !beat.getProducer().getId().equals(userId))) {
             throw new RuntimeException("Sem permissão para editar este beat.");
+        }
+        if (!isAdmin && beat.isSoldExclusively()) {
+            throw new RuntimeException("Não é possível editar um beat vendido em exclusivo.");
         }
         if (req.getTitle()              != null) beat.setTitle(req.getTitle());
         if (req.getGenre()              != null) beat.setGenre(req.getGenre());
@@ -274,7 +280,7 @@ public class MarketplaceService {
         if (req.getPremiumPrice()       != null) beat.setPremiumPrice(req.getPremiumPrice());
         if (req.getExclusivePrice()     != null) beat.setExclusivePrice(req.getExclusivePrice());
         if (req.getIsNew()              != null) beat.setNew(req.getIsNew());
-        if (req.getIsFeatured()         != null) beat.setFeatured(req.getIsFeatured());
+        if (req.getIsFeatured()         != null && isAdmin) beat.setFeatured(req.getIsFeatured());
         if (req.getExclusiveNegotiable()!= null) beat.setExclusiveNegotiable(req.getExclusiveNegotiable());
         return toDto(beatRepository.save(beat));
     }
@@ -287,6 +293,9 @@ public class MarketplaceService {
                 .orElseThrow(() -> new RuntimeException("Beat não encontrado."));
         if (beat.getProducer() == null || !beat.getProducer().getId().equals(userId)) {
             throw new RuntimeException("Sem permissão para eliminar este beat.");
+        }
+        if (beat.isSoldExclusively()) {
+            throw new RuntimeException("Não é possível eliminar um beat vendido em exclusivo.");
         }
         beatRepository.delete(beat);
     }
@@ -336,6 +345,7 @@ public class MarketplaceService {
         dto.setNew(beat.isNew());
         dto.setFeatured(beat.isFeatured());
         dto.setExclusiveNegotiable(beat.isExclusiveNegotiable());
+        dto.setSoldExclusively(beat.isSoldExclusively());
 
         BeatResponse.Prices prices = new BeatResponse.Prices();
         prices.setLease(beat.getLeasePrice()     != null ? beat.getLeasePrice().doubleValue()     : 0.0);

@@ -40,6 +40,10 @@ public class CustomAuthenticationManager implements AuthenticationManager {
             throw new BadCredentialsException("Wrong Password");
         }
 
+        if (!user.isEnabled()) {
+            throw new DisabledException("Account pending validation");
+        }
+
         List<GrantedAuthority> grantedAuthorityList = new ArrayList<>();
         for (Role role : user.getRoles()) {
             grantedAuthorityList.add(new SimpleGrantedAuthority(role.getName()));

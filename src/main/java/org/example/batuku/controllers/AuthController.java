@@ -6,11 +6,14 @@ import org.example.batuku.dto.UserResponse;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.UserRepository;
 import org.example.batuku.services.AuthService;
+import org.example.batuku.utils.JwtTokenUtil;
+import org.example.batuku.utils.JwtUserDetailsService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -30,12 +33,17 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final JwtTokenUtil jwtTokenUtil;
+    private final JwtUserDetailsService jwtUserDetailsService;
 
     public AuthController(AuthService authService, UserRepository userRepository,
-                          ArtistProfileRepository artistProfileRepository) {
+                          ArtistProfileRepository artistProfileRepository,
+                          JwtTokenUtil jwtTokenUtil, JwtUserDetailsService jwtUserDetailsService) {
         this.authService = authService;
         this.userRepository = userRepository;
         this.artistProfileRepository = artistProfileRepository;
+        this.jwtTokenUtil = jwtTokenUtil;
+        this.jwtUserDetailsService = jwtUserDetailsService;
     }
 
     /**
@@ -59,7 +67,12 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
             User created = authService.register(request);
-            // Devolvemos UserResponse — nunca a entidade diretamente (teria a password!)
+            if (!created.isEnabled()) {
+                UserDetails ud = jwtUserDetailsService.loadUserByUsername(created.getEmail());
+                String token = jwtTokenUtil.generateToken(ud);
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(Map.of("pendingValidation", true, "email", created.getEmail(), "token", token));
+            }
             return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(created));
         } catch (RuntimeException ex) {
             // Email duplicado ou outro erro de negócio

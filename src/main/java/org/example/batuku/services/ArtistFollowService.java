@@ -97,21 +97,23 @@ public class ArtistFollowService {
     }
 
     public List<ArtistFollowResponse> listFollowed(User user) {
+        return listFollowedByUserId(user.getId());
+    }
+
+    public List<ArtistFollowResponse> listFollowedByUserId(Long userId) {
         Set<Long> seen = new HashSet<>();
         List<ArtistFollowResponse> result = new ArrayList<>();
 
-        // artistas seguidos directamente via artist_follows
-        for (ArtistFollow f : artistFollowRepository.findByFollowerIdOrderByCreatedAtDesc(user.getId())) {
+        for (ArtistFollow f : artistFollowRepository.findByFollowerIdOrderByCreatedAtDesc(userId)) {
             ArtistProfile p = f.getArtistProfile();
             if (seen.add(p.getId())) {
-                result.add(ArtistFollowResponse.from(p, artistFollowRepository.countByArtistProfileId(p.getId())));
+                result.add(ArtistFollowResponse.from(p, artistFollowRepository.countByArtistProfileId(p.getId()), 0L));
             }
         }
 
-        // users seguidos via follows cujo user tem um ArtistProfile associado
-        for (ArtistProfile p : artistProfileRepository.findByFollowerViaUserFollow(user.getId())) {
+        for (ArtistProfile p : artistProfileRepository.findByFollowerViaUserFollow(userId)) {
             if (seen.add(p.getId())) {
-                result.add(ArtistFollowResponse.from(p, artistFollowRepository.countByArtistProfileId(p.getId())));
+                result.add(ArtistFollowResponse.from(p, artistFollowRepository.countByArtistProfileId(p.getId()), 0L));
             }
         }
 

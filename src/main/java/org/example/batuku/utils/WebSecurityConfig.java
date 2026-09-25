@@ -65,7 +65,9 @@ public class WebSecurityConfig {
                     "/authenticate",
                     "/api/auth/register",
                     "/oauth2/**",
-                    "/login/oauth2/**"
+                    "/login/oauth2/**",
+                    "/ws",
+                    "/ws/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tracks", "/api/tracks/artist/**", "/api/tracks/**").permitAll()
@@ -76,6 +78,7 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/shared-project/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/marketplace/beats", "/api/marketplace/beats/featured",
                         "/api/marketplace/genres", "/api/marketplace/stats", "/api/marketplace/producers").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/genres", "/api/genres/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2

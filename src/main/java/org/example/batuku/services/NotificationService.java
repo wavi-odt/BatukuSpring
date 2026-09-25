@@ -4,7 +4,9 @@ import org.example.batuku.domain.Notification;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.NotificationResponse;
 import org.example.batuku.repository.NotificationRepository;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -14,12 +16,15 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(NotificationRepository notificationRepository,
+                               SimpMessagingTemplate messagingTemplate) {
         this.notificationRepository = notificationRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notify(User user, Notification.NotificationType type, Long referenceId, String message) {
         Notification n = new Notification();
         n.setUser(user);
@@ -27,6 +32,7 @@ public class NotificationService {
         n.setReferenceId(referenceId);
         n.setMessage(message);
         notificationRepository.save(n);
+        messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notifications", toDto(n));
     }
 
     @Transactional(readOnly = true)

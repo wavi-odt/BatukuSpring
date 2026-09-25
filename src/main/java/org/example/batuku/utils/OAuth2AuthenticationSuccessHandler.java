@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Component
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -38,10 +39,17 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = (String) oAuth2User.getAttributes().get("email");
 
-        User user = userRepository.findByEmail(email.trim().toLowerCase())
-                .orElseThrow(() -> new RuntimeException("Utilizador OAuth2 não encontrado: " + email));
+        Optional<User> userOpt = userRepository.findByEmail(email.trim().toLowerCase());
 
-        var userDetails = jwtUserDetailsService.loadUserByUsername(user.getEmail());
+        if (userOpt.isEmpty()) {
+            String errorUrl = UriComponentsBuilder.fromUriString(redirectUri)
+                    .queryParam("error", "oauth_failed")
+                    .build().toUriString();
+            getRedirectStrategy().sendRedirect(request, response, errorUrl);
+            return;
+        }
+
+        var userDetails = jwtUserDetailsService.loadUserByUsername(userOpt.get().getEmail());
         String token = jwtTokenUtil.generateToken(userDetails);
 
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)

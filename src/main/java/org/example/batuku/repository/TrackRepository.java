@@ -16,4 +16,5 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     List<Track> findBySourceAndDurationMsIsNull(Track.TrackSource source);
     List<Track> findByScheduledAtBeforeAndIsPublishedFalse(LocalDateTime cutoff);
     List<Track> findTop20ByArtistProfileIdInAndIsPublishedTrueOrderByCreatedAtDesc(List<Long> artistProfileIds);
+    List<Track> findByGenreIdAndIsPublishedTrueOrderByCreatedAtDesc(Long genreId);
 }

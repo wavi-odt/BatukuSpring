@@ -201,8 +201,12 @@ public class AlbumService {
                 .toList();
     }
 
-    private ReleaseResponse toResponse(Album album) {
+    public ReleaseResponse toResponsePublic(Album album) {
         return ReleaseResponse.from(album, tracksOf(album.getId()));
+    }
+
+    private ReleaseResponse toResponse(Album album) {
+        return toResponsePublic(album);
     }
 
     private Album.AlbumType parseAlbumType(String raw) {

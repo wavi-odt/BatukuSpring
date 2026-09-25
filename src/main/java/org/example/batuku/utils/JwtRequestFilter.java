@@ -15,9 +15,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR ───────────────────────────
+// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR (excepto shouldNotFilter abaixo) ───
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        return uri.startsWith("/ws/") || uri.equals("/ws");
+    }
 
     @Autowired
     private JwtUserDetailsService jwtUserDetailsService;
