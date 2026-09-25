@@ -20,4 +20,7 @@ public interface ArtistProfileRepository extends JpaRepository<ArtistProfile, Lo
 
     @Query("SELECT a FROM ArtistProfile a WHERE a.user IS NOT NULL AND a.user.id IN (SELECT f.followee.id FROM Follow f WHERE f.follower.id = :userId)")
     List<ArtistProfile> findByFollowerViaUserFollow(@Param("userId") Long userId);
+
+    List<ArtistProfile> findAllByOrderByNameAsc();
+    List<ArtistProfile> findByFeaturedOnHeroTrueOrderByNameAsc();
 }

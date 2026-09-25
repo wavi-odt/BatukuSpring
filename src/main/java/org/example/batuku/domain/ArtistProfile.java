@@ -59,6 +59,9 @@ public class ArtistProfile {
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
 
+    @Column(name = "featured_on_hero", nullable = false)
+    private boolean featuredOnHero = false;
+
     @ElementCollection(fetch = jakarta.persistence.FetchType.EAGER)
     @CollectionTable(name = "artist_profile_links",
             joinColumns = @JoinColumn(name = "artist_profile_id"))
@@ -106,6 +109,9 @@ public class ArtistProfile {
 
     public String getThumbnailUrl() { return thumbnailUrl; }
     public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }
+
+    public boolean isFeaturedOnHero() { return featuredOnHero; }
+    public void setFeaturedOnHero(boolean featuredOnHero) { this.featuredOnHero = featuredOnHero; }
 
     public List<ArtistSocialLink> getLinks() { return links; }
     public void setLinks(List<ArtistSocialLink> links) { this.links = links; }

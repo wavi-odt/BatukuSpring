@@ -79,6 +79,7 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/marketplace/beats", "/api/marketplace/beats/featured",
                         "/api/marketplace/genres", "/api/marketplace/stats", "/api/marketplace/producers").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/genres", "/api/genres/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2

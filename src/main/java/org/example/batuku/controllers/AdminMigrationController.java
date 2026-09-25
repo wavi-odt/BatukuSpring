@@ -1,10 +1,12 @@
 package org.example.batuku.controllers;
 
 import org.example.batuku.config.StorageProperties;
+import org.example.batuku.domain.ArtistClaimRequest;
 import org.example.batuku.domain.ArtistFollow;
 import org.example.batuku.domain.ArtistProfile;
 import org.example.batuku.domain.Follow;
 import org.example.batuku.domain.Track;
+import org.example.batuku.repository.ArtistClaimRequestRepository;
 import org.example.batuku.repository.ArtistFollowRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.FollowRepository;
@@ -33,6 +35,7 @@ public class AdminMigrationController {
     private final FollowRepository followRepository;
     private final ArtistFollowRepository artistFollowRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final ArtistClaimRequestRepository claimRepository;
     private final Path baseDir;
     private final String publicBaseUrl;
 
@@ -40,11 +43,13 @@ public class AdminMigrationController {
                                     FollowRepository followRepository,
                                     ArtistFollowRepository artistFollowRepository,
                                     ArtistProfileRepository artistProfileRepository,
+                                    ArtistClaimRequestRepository claimRepository,
                                     StorageProperties storageProperties) {
         this.trackRepository = trackRepository;
         this.followRepository = followRepository;
         this.artistFollowRepository = artistFollowRepository;
         this.artistProfileRepository = artistProfileRepository;
+        this.claimRepository = claimRepository;
         this.baseDir = Path.of(storageProperties.getLocal().getBaseDir()).toAbsolutePath();
         this.publicBaseUrl = storageProperties.getLocal().getPublicBaseUrl();
     }
@@ -135,6 +140,57 @@ public class AdminMigrationController {
         return Map.of(
                 "total",   tracks.size(),
                 "updated", updated,
+                "skipped", skipped
+        );
+    }
+
+    /**
+     * Garante que todos os ArtistProfile resultantes de claims verificados têm
+     * spotifyArtistId preenchido, para aparecerem como "importados" no painel admin.
+     * Corrige perfis criados antes de o verify() preencher esse campo.
+     * Seguro de correr múltiplas vezes.
+     */
+    @PostMapping("/sync-claimed-artists")
+    @Transactional
+    public Map<String, Object> syncClaimedArtists() {
+        List<ArtistClaimRequest> verified = claimRepository
+                .findByStatusOrderByCreatedAtAsc(ArtistClaimRequest.ClaimStatus.VERIFIED);
+        int synced  = 0;
+        int skipped = 0;
+
+        for (ArtistClaimRequest claim : verified) {
+            if (claim.getSpotifyArtistId() == null) {
+                skipped++;
+                continue;
+            }
+
+            ArtistProfile profile = claim.getArtistProfile();
+            if (profile == null) {
+                skipped++;
+                continue;
+            }
+
+            if (claim.getSpotifyArtistId().equals(profile.getSpotifyArtistId())) {
+                skipped++; // já está correto
+                continue;
+            }
+
+            profile.setSpotifyArtistId(claim.getSpotifyArtistId());
+            if (claim.getSpotifyArtistName() != null && (profile.getName() == null || profile.getName().isBlank())) {
+                profile.setName(claim.getSpotifyArtistName());
+            }
+            if (claim.getSpotifyArtistImageUrl() != null && profile.getImageUrl() == null) {
+                profile.setImageUrl(claim.getSpotifyArtistImageUrl());
+            }
+            artistProfileRepository.save(profile);
+            log.info("sync-claimed-artists: claim {} → profile {} spotifyArtistId={}",
+                    claim.getId(), profile.getId(), claim.getSpotifyArtistId());
+            synced++;
+        }
+
+        log.info("sync-claimed-artists concluído: {} sincronizados, {} ignorados", synced, skipped);
+        return Map.of(
+                "synced",  synced,
                 "skipped", skipped
         );
     }

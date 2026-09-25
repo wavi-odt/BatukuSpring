@@ -33,8 +33,34 @@ public class ArtistProfileService {
     public record ImportResult(ArtistProfile profile, int tracksImported, int tracksUpdated, int tracksSkipped) {}
     private record TrackStats(int imported, int updated, int skipped) {}
 
+    public record HeroArtistDto(Long id, String name, String imageUrl) {}
+    public record AdminArtistListItem(Long id, String name, String imageUrl, boolean featuredOnHero, String genre, String location) {}
+
     public List<SpotifyClient.SpotifyArtist> search(String query) {
         return spotifyClient.searchArtists(query, 5);
+    }
+
+    public List<HeroArtistDto> getHeroArtists() {
+        return artistProfileRepository.findByFeaturedOnHeroTrueOrderByNameAsc().stream()
+                .map(p -> new HeroArtistDto(p.getId(), p.getName(), p.getImageUrl()))
+                .toList();
+    }
+
+    public List<AdminArtistListItem> listAll() {
+        return artistProfileRepository.findAllByOrderByNameAsc().stream()
+                .map(p -> {
+                    String genre = (p.getGenres() != null && !p.getGenres().isEmpty()) ? p.getGenres().get(0) : null;
+                    return new AdminArtistListItem(p.getId(), p.getName(), p.getImageUrl(), p.isFeaturedOnHero(), genre, p.getLocation());
+                })
+                .toList();
+    }
+
+    @Transactional
+    public void setFeaturedOnHero(Long id, boolean featured) {
+        ArtistProfile p = artistProfileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Perfil não encontrado: " + id));
+        p.setFeaturedOnHero(featured);
+        artistProfileRepository.save(p);
     }
 
     public Set<String> findImportedIds(List<String> spotifyIds) {

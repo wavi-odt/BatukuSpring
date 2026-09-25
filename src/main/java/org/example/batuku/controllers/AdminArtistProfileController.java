@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin/artist-profiles")
 @PreAuthorize("hasRole('ADMIN')")
@@ -20,6 +22,18 @@ public class AdminArtistProfileController {
 
     public AdminArtistProfileController(ArtistProfileService artistProfileService) {
         this.artistProfileService = artistProfileService;
+    }
+
+    @GetMapping
+    public List<ArtistProfileService.AdminArtistListItem> listAll() {
+        return artistProfileService.listAll();
+    }
+
+    @PatchMapping("/{id}")
+    public void updateProfile(@PathVariable Long id, @RequestBody UpdateProfileRequest req) {
+        if (req.featuredOnHero() != null) {
+            artistProfileService.setFeaturedOnHero(id, req.featuredOnHero());
+        }
     }
 
     @GetMapping("/search")
@@ -44,4 +58,6 @@ public class AdminArtistProfileController {
             @Pattern(regexp = "[A-Za-z0-9]{22}", message = "must be a valid Spotify ID (22 alphanumeric characters)")
             String spotifyArtistId
     ) {}
+
+    record UpdateProfileRequest(Boolean featuredOnHero) {}
 }
