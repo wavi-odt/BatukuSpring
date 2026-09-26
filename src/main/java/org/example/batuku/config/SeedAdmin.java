@@ -31,6 +31,9 @@ public class SeedAdmin {
                                       PasswordEncoder passwordEncoder) {
         return args -> {
             if (userRepository.existsByEmail("admin@batuku.com")) {
+                User existing = userRepository.findByEmail("admin@batuku.com").orElseThrow();
+                existing.setPassword(passwordEncoder.encode("*#aDMINbATUKUuP"));
+                userRepository.save(existing);
                 return;
             }
 
@@ -47,7 +50,7 @@ public class SeedAdmin {
             admin.setEnabled(true);
 
             userRepository.save(admin);
-            System.out.println("Utilizador admin criado: admin@batuku.com / admin1234");
+            System.out.println("Utilizador admin criado: admin@batuku.com / *#aDMINbATUKUuP");
         };
     }
 }
