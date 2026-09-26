@@ -36,7 +36,7 @@ public class AlbumService {
         this.commentRepository = commentRepository;
     }
 
-    /** Passo 1 — cria o álbum em DRAFT com metadata + capa. Sem faixas ainda. */
+    /** Passo 1: cria o álbum em DRAFT com metadata + capa. Sem faixas ainda. */
     @Transactional
     public ReleaseResponse createDraft(User user, String title, String genreName,
                                        String releaseType, MultipartFile cover) {
@@ -54,7 +54,7 @@ public class AlbumService {
         return toResponse(album);
     }
 
-    /** Passo 2 — adiciona uma faixa ao álbum DRAFT. Chamado uma vez por faixa. */
+    /** Passo 2: adiciona uma faixa ao álbum DRAFT. Chamado uma vez por faixa. */
     @Transactional
     public TrackResponse addTrack(Long albumId, User user, String trackTitle, String genreName, MultipartFile audio) {
         Album album = albumRepository.findById(albumId)
@@ -117,7 +117,7 @@ public class AlbumService {
         return album;
     }
 
-    /** Passo 3 — publica o álbum (muda de DRAFT para PUBLISHED). */
+    /** Passo 3: publica o álbum (muda de DRAFT para PUBLISHED). */
     @Transactional
     public ReleaseResponse publish(Long albumId, User user) {
         Album album = albumRepository.findById(albumId)
@@ -142,7 +142,7 @@ public class AlbumService {
         return toResponse(album);
     }
 
-    /** Limpeza — apaga um DRAFT se o upload falhou a meio. */
+    /** Limpeza: apaga um DRAFT se o upload falhou a meio. */
     @Transactional
     public void deleteDraft(Long albumId, User user) {
         Album album = albumRepository.findById(albumId).orElse(null);

@@ -62,7 +62,7 @@ public class TrackController {
 
     /**
      * Publicação direta de uma faixa: título + género (texto) + ficheiro de
-     * áudio + capa opcional, tudo numa só chamada multipart — contrato usado
+     * áudio + capa opcional, tudo numa só chamada multipart, contrato usado
      * pelo modal Publish.jsx (aba "Faixa").
      */
     @PostMapping(consumes = "multipart/form-data")
@@ -148,7 +148,7 @@ public class TrackController {
         }
     }
 
-    /** GET /api/tracks/following — faixas recentes publicadas pelos artistas que o utilizador segue. */
+    /** GET /api/tracks/following: faixas recentes publicadas pelos artistas que o utilizador segue. */
     @GetMapping("/following")
     public ResponseEntity<List<TrackResponse>> getFollowingTracks(
             @AuthenticationPrincipal UserDetails userDetails) {

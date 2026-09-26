@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR ───────────────────────────
+// ─── FICHEIRO DO PROFESSOR, NAO ALTERAR ────────────────────────────
 @Component
 public class JwtTokenUtil implements Serializable {
 

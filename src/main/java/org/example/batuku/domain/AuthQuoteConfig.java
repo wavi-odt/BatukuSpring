@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 @Table(name = "auth_quote_config")
 public class AuthQuoteConfig {
 
-    /** "LOGIN" ou "REGISTER" — chave natural da linha. */
+    /** "LOGIN" ou "REGISTER", chave natural da linha. */
     @Id
     @Column(name = "page", length = 20)
     private String page;

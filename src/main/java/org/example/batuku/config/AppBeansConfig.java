@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
  *
  * BCryptPasswordEncoder é o standard da indústria para guardar passwords.
  * Quando o utilizador se regista, a password é transformada em hash.
- * Quando faz login, o hash é comparado — a password original nunca é guardada.
+ * Quando faz login, o hash é comparado; a password original nunca é guardada.
  */
 @Configuration
 public class AppBeansConfig {

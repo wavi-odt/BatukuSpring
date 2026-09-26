@@ -123,13 +123,13 @@ public class PersonalProjectService {
 
     /* ─── Partilha pública ──────────────────────────────────────── */
 
-    /** Uso interno — sem garantia de carregamento das faixas. */
+    /** Uso interno, sem garantia de carregamento das faixas. */
     public PersonalProject findByShareToken(String token) {
         return projectRepo.findByShareToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
 
-    /** Uso público — carrega projeto + faixas num único JOIN. */
+    /** Uso público, carrega projeto + faixas num único JOIN. */
     public PersonalProject findByShareTokenWithTracks(String token) {
         return projectRepo.findByShareTokenWithTracks(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));

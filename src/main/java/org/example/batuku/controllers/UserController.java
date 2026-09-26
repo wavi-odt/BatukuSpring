@@ -172,7 +172,7 @@ public class UserController {
     /**
      * POST /api/users/me/marketplace-role
      * Define o papel do utilizador no marketplace (FAN ou PRODUCER).
-     * Só pode ser definido uma vez — permanente.
+     * Só pode ser definido uma vez, permanente.
      */
     @PostMapping("/me/marketplace-role")
     public ResponseEntity<?> setMarketplaceRole(

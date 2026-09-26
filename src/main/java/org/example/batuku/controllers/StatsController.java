@@ -232,7 +232,7 @@ public class StatsController {
         };
     }
 
-    /** POST /api/tracks/{id}/play — registar reprodução, devolve playId */
+    /** POST /api/tracks/{id}/play: registar reprodução, devolve playId */
     @PostMapping("/api/tracks/{id}/play")
     public ResponseEntity<Map<String, Long>> recordPlay(
             @PathVariable Long id,
@@ -260,7 +260,7 @@ public class StatsController {
         return ResponseEntity.ok(Map.of());
     }
 
-    /** PATCH /api/plays/{id} — actualizar duração/conclusão */
+    /** PATCH /api/plays/{id}: actualizar duração/conclusão */
     @PatchMapping("/api/plays/{id}")
     public ResponseEntity<Void> updatePlay(
             @PathVariable Long id,

@@ -28,11 +28,11 @@ public class ArtistClaimRequest {
     @Column(name = "spotify_artist_image_url", length = 500)
     private String spotifyArtistImageUrl;
 
-    /** Chave de objeto no storage (não URL expirada) — presigned URL gerada em cada pedido. */
+    /** Chave de objeto no storage (não URL expirada), presigned URL gerada em cada pedido. */
     @Column(name = "selfie_key", nullable = false, length = 500)
     private String selfieKey;
 
-    /** Chave de objeto no storage (não URL expirada) — presigned URL gerada em cada pedido. */
+    /** Chave de objeto no storage (não URL expirada), presigned URL gerada em cada pedido. */
     @Column(name = "id_document_key", nullable = false, length = 500)
     private String idDocumentKey;
 

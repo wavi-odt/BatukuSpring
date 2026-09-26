@@ -57,7 +57,7 @@ public class WebSecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-            // IF_REQUIRED: necessário para o fluxo OAuth2 (state param) — as chamadas à API continuam a usar JWT
+            // IF_REQUIRED: necessário para o fluxo OAuth2 (state param), as chamadas à API continuam a usar JWT
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

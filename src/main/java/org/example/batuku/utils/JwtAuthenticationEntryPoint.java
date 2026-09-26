@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.Serializable;
 
-// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR ───────────────────────────
+// ─── FICHEIRO DO PROFESSOR, NAO ALTERAR ────────────────────────────
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint, Serializable {
 

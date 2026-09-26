@@ -13,7 +13,7 @@ import java.util.Map;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR ───────────────────────────
+// ─── FICHEIRO DO PROFESSOR, NAO ALTERAR ────────────────────────────
 // Endpoint: POST /authenticate
 // Body: { "username": "email@exemplo.com", "password": "..." }
 // Resposta: { "token": "eyJ..." }

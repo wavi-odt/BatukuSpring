@@ -2,7 +2,7 @@ package org.example.batuku.utils;
 
 import java.io.Serializable;
 
-// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR ───────────────────────────
+// ─── FICHEIRO DO PROFESSOR, NAO ALTERAR ────────────────────────────
 public class JwtRequest implements Serializable {
     private String username;
     private String password;

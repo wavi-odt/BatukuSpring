@@ -29,7 +29,7 @@ public class ReleaseController {
         this.jwtUserDetailsService = jwtUserDetailsService;
     }
 
-    /** Passo 1 — cria o álbum em modo DRAFT (metadata + capa, sem faixas). */
+    /** Passo 1: cria o álbum em modo DRAFT (metadata + capa, sem faixas). */
     @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ARTIST')")
     public ResponseEntity<ReleaseResponse> createDraft(
@@ -44,7 +44,7 @@ public class ReleaseController {
         return ResponseEntity.created(URI.create("/api/releases/" + response.getId())).body(response);
     }
 
-    /** Passo 2 — adiciona uma faixa ao álbum DRAFT. Chamado uma vez por faixa. */
+    /** Passo 2: adiciona uma faixa ao álbum DRAFT. Chamado uma vez por faixa. */
     @PostMapping(value = "/{id}/tracks", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ARTIST')")
     public ResponseEntity<TrackResponse> addTrack(
@@ -59,7 +59,7 @@ public class ReleaseController {
         return ResponseEntity.ok(track);
     }
 
-    /** Passo 3 — publica o álbum (DRAFT → PUBLISHED). */
+    /** Passo 3: publica o álbum (DRAFT para PUBLISHED). */
     @PostMapping("/{id}/publish")
     @PreAuthorize("hasRole('ARTIST')")
     public ResponseEntity<ReleaseResponse> publish(
@@ -103,7 +103,7 @@ public class ReleaseController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Limpeza — apaga o DRAFT se o upload falhou a meio. */
+    /** Limpeza: apaga o DRAFT se o upload falhou a meio. */
     @DeleteMapping("/{id}/draft")
     @PreAuthorize("hasRole('ARTIST')")
     public ResponseEntity<Void> deleteDraft(

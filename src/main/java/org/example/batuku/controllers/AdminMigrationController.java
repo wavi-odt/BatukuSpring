@@ -57,7 +57,7 @@ public class AdminMigrationController {
     /**
      * Migra follows antigos (User→User) para artist_follows (User→ArtistProfile)
      * quando o followee tem um ArtistProfile associado.
-     * Seguro de correr múltiplas vezes — ignora entradas já migradas.
+     * Seguro de correr múltiplas vezes, ignora entradas já migradas.
      */
     @PostMapping("/artist-follows")
     @Transactional
@@ -197,7 +197,7 @@ public class AdminMigrationController {
 
     /**
      * Deriva o caminho absoluto no disco a partir de audioUrl.
-     * Funciona apenas para storage local — audioUrl = publicBaseUrl + "/" + relativeKey.
+     * Funciona apenas para storage local: audioUrl = publicBaseUrl + "/" + relativeKey.
      */
     private Path resolveFilePath(String audioUrl) {
         if (audioUrl == null) return null;

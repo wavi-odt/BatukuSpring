@@ -16,7 +16,7 @@ import java.util.Set;
 /**
  * Serviço responsável pelo registo de novos utilizadores.
  *
- * A lógica de LOGIN não está aqui — é tratada diretamente pelo
+ * A lógica de LOGIN não está aqui, é tratada diretamente pelo
  * JwtAuthenticationController (igual ao projeto do professor),
  * que usa o CustomAuthenticationManager + JwtTokenUtil.
  */
@@ -58,7 +58,7 @@ public class AuthService {
             throw new RuntimeException("Este username já está em uso.");
         }
 
-        // 2) Determinar o papel pedido — só FAN ou ARTIST são permitidos no registo
+        // 2) Determinar o papel pedido, só FAN ou ARTIST são permitidos no registo
         boolean wantsArtist = "ARTIST".equalsIgnoreCase(request.getUserRole());
         User.UserRole userRole = wantsArtist ? User.UserRole.ARTIST : User.UserRole.FAN;
         String roleName = wantsArtist ? "ROLE_ARTIST" : "ROLE_FAN";

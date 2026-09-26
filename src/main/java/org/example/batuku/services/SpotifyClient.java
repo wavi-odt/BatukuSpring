@@ -46,7 +46,7 @@ public class SpotifyClient {
     @PostConstruct
     void validateCredentials() {
         if (clientId.isBlank() || clientSecret.isBlank()) {
-            log.warn("Spotify credentials not configured (SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET) — Spotify integration will fail at runtime.");
+            log.warn("Spotify credentials not configured (SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET), Spotify integration will fail at runtime.");
         }
     }
 
@@ -71,7 +71,7 @@ public class SpotifyClient {
                     .body(SpotifyTokenResponse.class);
             if (response == null || response.accessToken() == null) {
                 throw new SpotifyApiException(
-                        "Spotify token response was empty — check client credentials", 503);
+                        "Spotify token response was empty, check client credentials", 503);
             }
             cachedToken = response.accessToken();
             tokenExpiresAt = Instant.now().plusSeconds(response.expiresIn());
@@ -81,7 +81,7 @@ public class SpotifyClient {
         } catch (RestClientResponseException e) {
             throw new SpotifyApiException(
                     "Failed to obtain Spotify access token (HTTP " + e.getStatusCode().value() +
-                    ") — check SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET", 503, e);
+                    "), check SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET", 503, e);
         }
     }
 
@@ -147,18 +147,18 @@ public class SpotifyClient {
         } catch (RestClientResponseException e) {
             SpotifyApiException se = toSpotifyException(operation, e);
             if (retryOn403 && se.getHttpStatus() == 403) {
-                log.warn("Spotify 403 on '{}' — body: {} — forcing token refresh and retrying once",
+                log.warn("Spotify 403 on '{}', body: {}, forcing token refresh and retrying once",
                         operation, e.getResponseBodyAsString());
                 synchronized (this) { cachedToken = null; }
                 return attemptCall(operation, call, false);
             }
             if (!retryOn403 && se.getHttpStatus() == 403) {
-                log.warn("Spotify 403 persists after token refresh on '{}' — body: {}",
+                log.warn("Spotify 403 persists after token refresh on '{}', body: {}",
                         operation, e.getResponseBodyAsString());
             }
             // 429 ou outro erro: falhar imediatamente sem bloquear o thread
             if (se.getHttpStatus() == 429) {
-                log.warn("Spotify rate-limited on '{}' — returning empty immediately", operation);
+                log.warn("Spotify rate-limited on '{}', returning empty immediately", operation);
             }
             throw se;
         } catch (RestClientException e) {

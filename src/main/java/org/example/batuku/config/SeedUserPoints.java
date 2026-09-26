@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Garante que todos os utilizadores existentes têm um registo UserPoints.
- * Corre após o SeedBadges (Order 4). Idempotente — o inicializarPontos
+ * Corre após o SeedBadges (Order 4). Idempotente, o inicializarPontos
  * já verifica se o registo existe antes de criar.
  */
 @Configuration

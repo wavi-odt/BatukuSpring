@@ -47,7 +47,7 @@ public class LocalFileStorageService implements FileStorageService {
         try {
             Files.deleteIfExists(baseDir.resolve(key));
         } catch (IOException e) {
-            // ignorar — ficheiro pode já não existir
+            // ignorar, ficheiro pode já não existir
         }
     }
 }

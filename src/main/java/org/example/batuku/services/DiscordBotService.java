@@ -64,7 +64,7 @@ public class DiscordBotService extends ListenerAdapter {
     @PostConstruct
     public void init() {
         if (botToken.isBlank()) {
-            log.info("DISCORD_BOT_TOKEN não configurado — bot desativado.");
+            log.info("DISCORD_BOT_TOKEN não configurado, bot desativado.");
             return;
         }
         try {
@@ -186,7 +186,7 @@ public class DiscordBotService extends ListenerAdapter {
             Track t = tracks.get(i);
             String artist = t.getArtistProfile() != null ? t.getArtistProfile().getName() : "Desconhecido";
             eb.addField((i + 1) + ". " + t.getTitle(),
-                    "by " + artist + " — [ouvir](" + appBaseUrl + "/track/" + t.getId() + ")",
+                    "by " + artist + " | [ouvir](" + appBaseUrl + "/track/" + t.getId() + ")",
                     false);
         }
 

@@ -145,7 +145,7 @@ public class ArtistController {
         );
     }
 
-    /** GET /api/artists/options — listas pré-definidas (público). */
+    /** GET /api/artists/options: listas pré-definidas (público). */
     @GetMapping("/options")
     public ArtistOptionsResponse getOptions() {
         List<String> genres = genreRepository.findAll().stream()
@@ -158,7 +158,7 @@ public class ArtistController {
         return new ArtistOptionsResponse(genres, languages, locations);
     }
 
-    /** GET /api/artists/me — perfil editável do artista autenticado. */
+    /** GET /api/artists/me: perfil editável do artista autenticado. */
     @GetMapping("/me")
     public ResponseEntity<?> getMyProfile() {
         ArtistProfile profile = resolveMyProfile();
@@ -177,7 +177,7 @@ public class ArtistController {
         return ResponseEntity.ok(Map.of("message", "Bio atualizada."));
     }
 
-    /** PUT /api/artists/me/location — só aceita localizações da lista canónica. */
+    /** PUT /api/artists/me/location: só aceita localizações da lista canónica. */
     @PutMapping("/me/location")
     public ResponseEntity<?> updateLocation(@Valid @RequestBody ArtistLocationRequest request) {
         ArtistProfile profile = resolveMyProfile();
@@ -191,7 +191,7 @@ public class ArtistController {
         return ResponseEntity.ok(Map.of("message", "Localização atualizada."));
     }
 
-    /** PUT /api/artists/me/genres — máximo 3, apenas géneros da lista canónica. */
+    /** PUT /api/artists/me/genres: máximo 3, apenas géneros da lista canónica. */
     @PutMapping("/me/genres")
     public ResponseEntity<?> updateGenres(@Valid @RequestBody ArtistGenresRequest request) {
         ArtistProfile profile = resolveMyProfile();
@@ -211,7 +211,7 @@ public class ArtistController {
         return ResponseEntity.ok(Map.of("message", "Géneros atualizados."));
     }
 
-    /** GET /api/artists/me/links — devolve os links sociais do artista autenticado. */
+    /** GET /api/artists/me/links: devolve os links sociais do artista autenticado. */
     @GetMapping("/me/links")
     public ResponseEntity<?> getMyLinks() {
         ArtistProfile profile = resolveMyProfile();
@@ -225,7 +225,7 @@ public class ArtistController {
         return ResponseEntity.ok(result);
     }
 
-    /** PUT /api/artists/me/links — substitui todos os links sociais do artista autenticado. */
+    /** PUT /api/artists/me/links: substitui todos os links sociais do artista autenticado. */
     @PutMapping("/me/links")
     public ResponseEntity<?> updateLinks(@RequestBody Map<String, List<Map<String, String>>> body) {
         ArtistProfile profile = resolveMyProfile();
@@ -240,7 +240,7 @@ public class ArtistController {
         return ResponseEntity.ok(Map.of("message", "Links atualizados."));
     }
 
-    /** PUT /api/artists/me/languages — apenas línguas da lista canónica. */
+    /** PUT /api/artists/me/languages: apenas línguas da lista canónica. */
     @PutMapping("/me/languages")
     public ResponseEntity<?> updateLanguages(@Valid @RequestBody ArtistLanguagesRequest request) {
         ArtistProfile profile = resolveMyProfile();
@@ -312,7 +312,7 @@ public class ArtistController {
         return ResponseEntity.ok(tracks);
     }
 
-    /** GET /api/artists/suggested — artistas não seguidos, ordenados por score de engagement. */
+    /** GET /api/artists/suggested: artistas não seguidos, ordenados por score de engagement. */
     @GetMapping("/suggested")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<List<ArtistFollowResponse>> getSuggested(

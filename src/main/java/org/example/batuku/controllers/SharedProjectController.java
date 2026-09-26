@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Endpoint público — sem autenticação.
+ * Endpoint público, sem autenticação.
  * Qualquer pessoa pode aceder a GET /api/shared-project/{token}.
  */
 @RestController

@@ -249,7 +249,7 @@ public class TrackService {
         return track;
     }
 
-    /** Actualiza só o coverUrl de uma track — chamado pelo AlbumService em cascade. */
+    /** Actualiza só o coverUrl de uma track, chamado pelo AlbumService em cascade. */
     void saveCoverUrl(Track track, String coverUrl) {
         track.setCoverUrl(coverUrl);
         trackRepository.save(track);

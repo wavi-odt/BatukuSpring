@@ -29,10 +29,10 @@ public class RegisterRequest {
     @Size(min = 2, max = 120, message = "O nome deve ter entre 2 e 120 caracteres")
     private String name;
 
-    // País é opcional — pode não ser enviado
+    // País é opcional, pode não ser enviado
     private String country;
 
-    // Papel pretendido: "FAN" ou "ARTIST" — se omitido, fica FAN por defeito
+    // Papel pretendido: "FAN" ou "ARTIST", se omitido fica FAN por defeito
     private String userRole;
 
     // ── Getters / Setters ───────────────────────────────────────────

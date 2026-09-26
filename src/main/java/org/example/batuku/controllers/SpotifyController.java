@@ -1,5 +1,6 @@
 package org.example.batuku.controllers;
 
+import org.example.batuku.services.ArtistProfileService;
 import org.example.batuku.services.SpotifyClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,9 +12,11 @@ import java.util.List;
 public class SpotifyController {
 
     private final SpotifyClient spotifyClient;
+    private final ArtistProfileService artistProfileService;
 
-    public SpotifyController(SpotifyClient spotifyClient) {
+    public SpotifyController(SpotifyClient spotifyClient, ArtistProfileService artistProfileService) {
         this.spotifyClient = spotifyClient;
+        this.artistProfileService = artistProfileService;
     }
 
     @GetMapping("/artists/{id}/top-tracks")
@@ -42,7 +45,7 @@ public class SpotifyController {
 
     @GetMapping("/search/artists")
     public List<SpotifyArtistResult> searchArtists(@RequestParam("q") String q) {
-        return spotifyClient.searchArtists(q, 10)
+        return artistProfileService.search(q)
                 .stream()
                 .map(a -> new SpotifyArtistResult(
                         a.id(),

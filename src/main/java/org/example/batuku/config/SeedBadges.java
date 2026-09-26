@@ -9,7 +9,7 @@ import org.springframework.core.annotation.Order;
 
 /**
  * Cria os badges de gamificação quando a aplicação arranca.
- * Idempotente — só insere se ainda não existir (verifica pelo nome único).
+ * Idempotente, só insere se ainda não existir (verifica pelo nome único).
  *
  * Badges organizados por pontos necessários (pointsRequired):
  *   O utilizador desbloqueia o badge automaticamente ao atingir o threshold

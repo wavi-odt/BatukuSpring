@@ -15,7 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR (excepto shouldNotFilter abaixo) ───
+// ─── FICHEIRO DO PROFESSOR, NAO ALTERAR (excepto shouldNotFilter abaixo) ────
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 

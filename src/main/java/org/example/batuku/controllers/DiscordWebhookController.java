@@ -78,7 +78,7 @@ public class DiscordWebhookController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/test-webhook")
     public ResponseEntity<Map<String, String>> testWebhook() {
-        discordNotificationService.notifyMilestone("🧪 Teste de webhook do Batuku — está a funcionar!");
+        discordNotificationService.notifyMilestone("🧪 Teste de webhook do Batuku, está a funcionar!");
         return ResponseEntity.ok(Map.of("status", "sent"));
     }
 

@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 /**
  * DTO de resposta quando devolvemos dados de um utilizador.
  *
- * NUNCA devolvemos a password ao cliente — por isso existe este DTO
+ * NUNCA devolvemos a password ao cliente, por isso existe este DTO
  * em vez de serializar a entidade User diretamente.
  *
  * Construtor estático "from(User)" facilita a conversão.
@@ -27,7 +27,7 @@ public class UserResponse {
     private String location;
     private String marketplaceRole;
 
-    // Construtor privado — obriga a usar o método estático
+    // Construtor privado, obriga a usar o método estático
     private UserResponse() {}
 
     public static UserResponse from(User user) {

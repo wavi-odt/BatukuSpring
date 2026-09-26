@@ -25,11 +25,11 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Email é o identificador de login — tem de ser único
+    // Email é o identificador de login, tem de ser único
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    // Handle único do utilizador (ex: @joao123) — também pode ser usado no login
+    // Handle único do utilizador (ex: @joao123), também pode ser usado no login
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
@@ -46,7 +46,7 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserRole userRole = UserRole.FAN;
 
-    // URL do avatar (opcional — pode ser null)
+    // URL do avatar (opcional, pode ser null)
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
@@ -79,7 +79,7 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
-    // Data de criação — preenchida automaticamente
+    // Data de criação, preenchida automaticamente
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

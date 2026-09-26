@@ -11,7 +11,7 @@ import org.springframework.core.annotation.Order;
  * Cria as roles na base de dados quando a aplicação arranca.
  *
  * CommandLineRunner corre automaticamente após o contexto Spring estar pronto.
- * O orElseGet garante que só insere se ainda não existir — é idempotente,
+ * O orElseGet garante que só insere se ainda não existir, é idempotente,
  * ou seja, podes reiniciar a app quantas vezes quiseres sem duplicar dados.
  *
  * Roles criadas:

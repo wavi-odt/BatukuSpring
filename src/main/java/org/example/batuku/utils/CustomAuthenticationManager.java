@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-// ─── FICHEIRO DO PROFESSOR — NÃO ALTERAR ───────────────────────────
+// ─── FICHEIRO DO PROFESSOR, NAO ALTERAR ────────────────────────────
 @Component
 public class CustomAuthenticationManager implements AuthenticationManager {
 

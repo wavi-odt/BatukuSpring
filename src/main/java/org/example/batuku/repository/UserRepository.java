@@ -10,7 +10,7 @@ import java.util.Optional;
  * Repositório de User.
  *
  * O Spring Data JPA implementa automaticamente estes métodos
- * a partir dos nomes — não precisas escrever SQL.
+ * a partir dos nomes, não precisas escrever SQL.
  */
 public interface UserRepository extends JpaRepository<User, Long> {
 
