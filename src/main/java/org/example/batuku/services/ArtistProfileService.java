@@ -36,8 +36,25 @@ public class ArtistProfileService {
     public record HeroArtistDto(Long id, String name, String imageUrl) {}
     public record AdminArtistListItem(Long id, String name, String imageUrl, boolean featuredOnHero, String genre, String location) {}
 
+    private static final java.util.regex.Pattern SPOTIFY_URL_PATTERN =
+            java.util.regex.Pattern.compile("open\\.spotify\\.com/artist/([A-Za-z0-9]{22})");
+    private static final java.util.regex.Pattern SPOTIFY_ID_PATTERN =
+            java.util.regex.Pattern.compile("^[A-Za-z0-9]{22}$");
+
     public List<SpotifyClient.SpotifyArtist> search(String query) {
-        return spotifyClient.searchArtists(query, 5);
+        String trimmed = query.trim();
+        String spotifyId = extractSpotifyId(trimmed);
+        if (spotifyId != null) {
+            return List.of(spotifyClient.getArtist(spotifyId));
+        }
+        return spotifyClient.searchArtists(trimmed, 10);
+    }
+
+    private String extractSpotifyId(String input) {
+        var urlMatcher = SPOTIFY_URL_PATTERN.matcher(input);
+        if (urlMatcher.find()) return urlMatcher.group(1);
+        if (SPOTIFY_ID_PATTERN.matcher(input).matches()) return input;
+        return null;
     }
 
     public List<HeroArtistDto> getHeroArtists() {
