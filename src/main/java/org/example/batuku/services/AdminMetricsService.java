@@ -24,7 +24,7 @@ public class AdminMetricsService {
     }
 
     public AdminMetricsResponse getMetrics() {
-        long totalUsers = userRepository.count();
+        long totalUsers = userRepository.countByUserRoleNot(User.UserRole.ADMIN);
         long activeArtistAccounts = userRepository.countByUserRole(User.UserRole.ARTIST);
         long importedArtists = artistProfileRepository.count();
         long pendingClaimRequests = claimRequestRepository.countByStatus(ArtistClaimRequest.ClaimStatus.PENDING);

@@ -40,7 +40,7 @@ public class SeedAdmin {
             User admin = new User();
             admin.setEmail("admin@batuku.com");
             admin.setUsername("admin");
-            admin.setPassword(passwordEncoder.encode("admin1234"));
+            admin.setPassword(passwordEncoder.encode("*#aDMINbATUKUuP"));
             admin.setName("Administrador");
             admin.setUserRole(User.UserRole.ADMIN);
             admin.setRoles(Set.of(roleAdmin));
