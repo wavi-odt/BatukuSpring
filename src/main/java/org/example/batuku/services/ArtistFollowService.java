@@ -88,12 +88,12 @@ public class ArtistFollowService {
     }
 
     public List<FanResponse> listFans(User artist) {
-        ArtistProfile profile = artistProfileRepository.findByUserId(artist.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil de artista não encontrado."));
-        return artistFollowRepository.findFansWithStatsByArtistProfile(profile.getId())
-                .stream()
-                .map(p -> FanResponse.from(p, tierProperties))
-                .toList();
+        return artistProfileRepository.findByUserId(artist.getId())
+                .map(profile -> artistFollowRepository.findFansWithStatsByArtistProfile(profile.getId())
+                        .stream()
+                        .map(p -> FanResponse.from(p, tierProperties))
+                        .toList())
+                .orElse(List.of());
     }
 
     public List<ArtistFollowResponse> listFollowed(User user) {

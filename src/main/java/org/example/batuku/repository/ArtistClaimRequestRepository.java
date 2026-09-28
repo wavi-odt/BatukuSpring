@@ -10,6 +10,7 @@ public interface ArtistClaimRequestRepository extends JpaRepository<ArtistClaimR
     List<ArtistClaimRequest> findByStatusOrderByCreatedAtAsc(ArtistClaimRequest.ClaimStatus status);
     Optional<ArtistClaimRequest> findFirstByUserIdAndStatus(Long userId, ArtistClaimRequest.ClaimStatus status);
     boolean existsByArtistProfileIdAndStatus(Long artistProfileId, ArtistClaimRequest.ClaimStatus status);
+    boolean existsByUserIdAndStatus(Long userId, ArtistClaimRequest.ClaimStatus status);
     long countByStatus(ArtistClaimRequest.ClaimStatus status);
     List<ArtistClaimRequest> findByUserIdOrderByCreatedAtDesc(Long userId);
 }

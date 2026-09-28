@@ -110,10 +110,12 @@ public class SpotifyClient {
         });
     }
 
-    public List<SpotifyTrack> getTopTracks(String artistId) {
+    public List<SpotifyTrack> getTopTracks(String artistId, String market) {
         return executeWithRetry("get top tracks for " + artistId, () -> {
+            String url = "https://api.spotify.com/v1/artists/" + artistId + "/top-tracks";
+            if (market != null && !market.isBlank()) url += "?market=" + market;
             SpotifyTopTracksResponse r = restClient.get()
-                    .uri("https://api.spotify.com/v1/artists/{id}/top-tracks", artistId)
+                    .uri(url)
                     .header("Authorization", "Bearer " + accessToken())
                     .retrieve()
                     .body(SpotifyTopTracksResponse.class);
@@ -121,15 +123,19 @@ public class SpotifyClient {
         });
     }
 
-    public List<SpotifyTrack> searchTracksByArtistName(String artistName, int limit) {
-        String query = artistName;
-        return executeWithRetry("track search for artist " + artistName, () -> {
+    public List<SpotifyTrack> searchTracksByArtistId(String artistId, String artistName, int limit, String market) {
+        return executeWithRetry("track search for artist " + artistId, () -> {
             SpotifyTrackSearchResponse r = restClient.get()
-                    .uri("https://api.spotify.com/v1/search?q={q}&type=track&limit={limit}", query, limit)
+                    .uri("https://api.spotify.com/v1/search?q={q}&type=track&limit=10&market={market}", artistName, market)
                     .header("Authorization", "Bearer " + accessToken())
                     .retrieve()
                     .body(SpotifyTrackSearchResponse.class);
-            return r == null || r.tracks() == null || r.tracks().items() == null ? List.of() : r.tracks().items();
+            if (r == null || r.tracks() == null || r.tracks().items() == null) return List.of();
+            return r.tracks().items().stream()
+                    .filter(t -> t.artists() != null &&
+                            t.artists().stream().anyMatch(a -> artistId.equals(a.id())))
+                    .limit(limit)
+                    .toList();
         });
     }
 
@@ -156,9 +162,10 @@ public class SpotifyClient {
                 log.warn("Spotify 403 persists after token refresh on '{}', body: {}",
                         operation, e.getResponseBodyAsString());
             }
-            // 429 ou outro erro: falhar imediatamente sem bloquear o thread
             if (se.getHttpStatus() == 429) {
                 log.warn("Spotify rate-limited on '{}', returning empty immediately", operation);
+            } else if (se.getHttpStatus() == 400) {
+                log.warn("Spotify 400 on '{}', body: {}", operation, e.getResponseBodyAsString());
             }
             throw se;
         } catch (RestClientException e) {
@@ -231,20 +238,18 @@ public class SpotifyClient {
     private record SpotifySearchResponse(SpotifyArtistPage artists) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SpotifyTrackPage(List<SpotifyTrack> items) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private record SpotifyTrackSearchResponse(SpotifyTrackPage tracks) {}
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record SpotifyTrack(
             String id,
             String name,
             @JsonProperty("preview_url") String previewUrl,
             @JsonProperty("duration_ms") Integer durationMs,
             @JsonProperty("external_urls") SpotifyExternalUrls externalUrls,
-            SpotifyAlbum album
+            SpotifyAlbum album,
+            List<SpotifyTrackArtist> artists
     ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record SpotifyTrackArtist(String id) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SpotifyAlbum(SpotifyImage[] images) {
@@ -255,4 +260,10 @@ public class SpotifyClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record SpotifyTopTracksResponse(List<SpotifyTrack> tracks) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record SpotifyTrackPage(List<SpotifyTrack> items) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record SpotifyTrackSearchResponse(SpotifyTrackPage tracks) {}
 }

@@ -42,6 +42,13 @@ public class EmailService {
 
     // ── Emails públicos ──────────────────────────────────────────────────
 
+    public void sendEmailVerificationEmail(String email, String name, String verificationUrl) {
+        Context ctx = new Context();
+        ctx.setVariable("name", name);
+        ctx.setVariable("verificationUrl", verificationUrl);
+        send(email, "Verifica o teu email - Batuku", "verify-email", ctx);
+    }
+
     public void sendWelcomeEmail(User user) {
         Context ctx = new Context();
         ctx.setVariable("name", user.getName());
@@ -61,10 +68,10 @@ public class EmailService {
         send(user.getEmail(), "Perfil verificado, já podes publicar música!", "claim-verified", ctx);
     }
 
-    public void sendClaimDoubtfulEmail(User user, ArtistProfile profile) {
+    public void sendClaimDoubtfulEmail(User user, String artistName) {
         Context ctx = new Context();
         ctx.setVariable("name", user.getName());
-        ctx.setVariable("artistName", profile.getName());
+        ctx.setVariable("artistName", artistName);
         send(user.getEmail(), "O teu pedido precisa de mais informação", "claim-doubtful", ctx);
     }
 }

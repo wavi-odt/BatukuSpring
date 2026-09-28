@@ -11,8 +11,8 @@ public class ArtistClaimRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "artist_profile_id", nullable = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "artist_profile_id", nullable = true)
     private ArtistProfile artistProfile;
 
     @ManyToOne(optional = false)

@@ -1,99 +1,178 @@
 package org.example.batuku.services;
 
-import org.example.batuku.domain.ArtistProfile;
+import org.example.batuku.domain.PendingRegistration;
 import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.RegisterRequest;
-import org.example.batuku.repository.ArtistProfileRepository;
+import org.example.batuku.repository.PendingRegistrationRepository;
 import org.example.batuku.repository.RoleRepository;
 import org.example.batuku.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
-/**
- * Serviço responsável pelo registo de novos utilizadores.
- *
- * A lógica de LOGIN não está aqui, é tratada diretamente pelo
- * JwtAuthenticationController (igual ao projeto do professor),
- * que usa o CustomAuthenticationManager + JwtTokenUtil.
- */
 @Service
 public class AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ArtistProfileRepository artistProfileRepository;
+    private final PendingRegistrationRepository pendingRepository;
     private final GamificationService gamificationService;
     private final EmailService emailService;
+
+    @Value("${batuku.app.base-url}")
+    private String appBaseUrl;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
-                       ArtistProfileRepository artistProfileRepository,
+                       PendingRegistrationRepository pendingRepository,
                        GamificationService gamificationService,
                        EmailService emailService) {
-        this.userRepository          = userRepository;
-        this.roleRepository          = roleRepository;
-        this.passwordEncoder         = passwordEncoder;
-        this.artistProfileRepository = artistProfileRepository;
-        this.gamificationService     = gamificationService;
-        this.emailService            = emailService;
+        this.userRepository   = userRepository;
+        this.roleRepository   = roleRepository;
+        this.passwordEncoder  = passwordEncoder;
+        this.pendingRepository = pendingRepository;
+        this.gamificationService = gamificationService;
+        this.emailService     = emailService;
     }
 
     /**
-     * Regista um novo utilizador como FAN ou ARTIST conforme o campo userRole do pedido.
-     * Se userRole for omitido ou inválido, fica FAN por defeito.
+     * Passo 1: valida os dados, guarda o registo pendente e envia o email de verificação.
+     * A conta só é criada quando o utilizador clicar no link.
      */
     @Transactional
-    public User register(RegisterRequest request) {
-
-        if (userRepository.existsByEmail(request.getEmail())) {
+    public void initRegistration(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail().trim().toLowerCase())) {
             throw new RuntimeException("Este email já está em uso.");
         }
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsername(request.getUsername().trim().toLowerCase())) {
             throw new RuntimeException("Este username já está em uso.");
         }
 
-        // 2) Determinar o papel pedido, só FAN ou ARTIST são permitidos no registo
+        // Substitui qualquer registo pendente anterior com o mesmo email
+        pendingRepository.deleteByEmail(request.getEmail().trim().toLowerCase());
+
         boolean wantsArtist = "ARTIST".equalsIgnoreCase(request.getUserRole());
-        User.UserRole userRole = wantsArtist ? User.UserRole.ARTIST : User.UserRole.FAN;
+
+        PendingRegistration pending = new PendingRegistration();
+        pending.setToken(UUID.randomUUID().toString());
+        pending.setEmail(request.getEmail().trim().toLowerCase());
+        pending.setUsername(request.getUsername().trim().toLowerCase());
+        pending.setPassword(passwordEncoder.encode(request.getPassword()));
+        pending.setName(request.getName().trim());
+        pending.setCountry(request.getCountry());
+        pending.setUserRole(wantsArtist ? "ARTIST" : "FAN");
+        pending.setExpiresAt(LocalDateTime.now().plusHours(24));
+
+        pendingRepository.save(pending);
+
+        String verificationUrl = appBaseUrl + "/verify-email?token=" + pending.getToken();
+        emailService.sendEmailVerificationEmail(pending.getEmail(), pending.getName(), verificationUrl);
+    }
+
+    /**
+     * Passo 2: valida o token, cria a conta e envia o email de boas-vindas (FAN)
+     * ou de pendência (ARTIST). Apaga o registo pendente.
+     */
+    @Transactional
+    public User confirmRegistration(String token) {
+        PendingRegistration pending = pendingRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Link de verificação inválido ou já utilizado."));
+
+        if (pending.getExpiresAt().isBefore(LocalDateTime.now())) {
+            pendingRepository.delete(pending);
+            throw new RuntimeException("O link de verificação expirou. Volta a registar-te.");
+        }
+
+        if (userRepository.existsByEmail(pending.getEmail())) {
+            pendingRepository.delete(pending);
+            throw new RuntimeException("Este email já está em uso.");
+        }
+        if (userRepository.existsByUsername(pending.getUsername())) {
+            pendingRepository.delete(pending);
+            throw new RuntimeException("Este username já está em uso.");
+        }
+
+        boolean wantsArtist = "ARTIST".equals(pending.getUserRole());
         String roleName = wantsArtist ? "ROLE_ARTIST" : "ROLE_FAN";
+        User.UserRole userRole = wantsArtist ? User.UserRole.ARTIST : User.UserRole.FAN;
 
         Role springRole = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new RuntimeException(roleName + " não encontrada. Verifica o SeedRoles."));
 
-        // 3) Construir o utilizador
         User user = new User();
-        user.setEmail(request.getEmail().trim().toLowerCase());
-        user.setUsername(request.getUsername().trim().toLowerCase());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setName(request.getName().trim());
-        user.setCountry(request.getCountry());
-        user.setUserRole(userRole);          // papel de negócio
-        user.setRoles(Set.of(springRole));   // role do Spring Security
-        user.setEnabled(!wantsArtist);       // artistas ficam pendentes até validação admin
+        user.setEmail(pending.getEmail());
+        user.setUsername(pending.getUsername());
+        user.setPassword(pending.getPassword());
+        user.setName(pending.getName());
+        user.setCountry(pending.getCountry());
+        user.setUserRole(userRole);
+        user.setRoles(new HashSet<>(Set.of(springRole)));
+        user.setEnabled(!wantsArtist);
 
         User saved = userRepository.save(user);
         gamificationService.inicializarPontos(saved);
+        pendingRepository.delete(pending);
 
-        if (userRole == User.UserRole.ARTIST) {
-            ArtistProfile profile = new ArtistProfile();
-            profile.setName(saved.getName());
-            profile.setImageUrl(saved.getAvatarUrl());
-            profile.setSpotifyArtistId(null);
-            profile.setSpotifyUrl(null);
-            profile.setClaimed(false);
-            profile.setUser(saved);
-            artistProfileRepository.save(profile);
-            try { emailService.sendArtistPendingEmail(saved); } catch (Exception ignored) {}
-        } else {
+        if (!wantsArtist) {
             try { emailService.sendWelcomeEmail(saved); } catch (Exception ignored) {}
         }
 
         return saved;
+    }
+
+    /**
+     * Gera um novo token e reenvia o email de verificação para um registo pendente.
+     */
+    @Transactional
+    public void resendVerification(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+
+        PendingRegistration pending = pendingRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new RuntimeException(
+                        "Não existe nenhum registo pendente para este email."));
+
+        pending.setToken(UUID.randomUUID().toString());
+        pending.setExpiresAt(LocalDateTime.now().plusHours(24));
+        pendingRepository.save(pending);
+
+        String verificationUrl = appBaseUrl + "/verify-email?token=" + pending.getToken();
+        emailService.sendEmailVerificationEmail(pending.getEmail(), pending.getName(), verificationUrl);
+    }
+
+    public void sendWelcomeEmail(User user) {
+        emailService.sendWelcomeEmail(user);
+    }
+
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void purgeExpiredPendingRegistrations() {
+        pendingRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+    }
+
+    /**
+     * Promove uma conta FAN (criada via OAuth2) para ARTIST.
+     * O ArtistProfile só é criado quando o admin aceitar o claim.
+     */
+    @Transactional
+    public void upgradeToArtist(User user) {
+        if (user.getUserRole() == User.UserRole.ARTIST) return;
+
+        Role artistRole = roleRepository.findByName("ROLE_ARTIST")
+                .orElseThrow(() -> new RuntimeException("ROLE_ARTIST não encontrada."));
+
+        user.setUserRole(User.UserRole.ARTIST);
+        user.setRoles(new HashSet<>(Set.of(artistRole)));
+        user.setEnabled(false);
+        userRepository.save(user);
     }
 }

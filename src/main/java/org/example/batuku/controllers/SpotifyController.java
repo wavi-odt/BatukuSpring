@@ -20,8 +20,10 @@ public class SpotifyController {
     }
 
     @GetMapping("/artists/{id}/top-tracks")
-    public List<SpotifyTrackResult> getTopTracks(@PathVariable String id) {
-        return spotifyClient.getTopTracks(id)
+    public List<SpotifyTrackResult> getTopTracks(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "PT") String market) {
+        return spotifyClient.getTopTracks(id, market)
                 .stream()
                 .map(t -> new SpotifyTrackResult(
                         t.id(),

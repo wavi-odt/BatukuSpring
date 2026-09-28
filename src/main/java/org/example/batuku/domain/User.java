@@ -60,14 +60,6 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String bio;
 
-    // Provedor de autenticação: "local", "google", "discord"
-    @Column(nullable = false, length = 30)
-    private String provider = "local";
-
-    // ID do utilizador no provedor OAuth2 (null para contas locais)
-    @Column(name = "provider_id", length = 255)
-    private String providerId;
-
     // Papel no marketplace: null (nunca respondeu), "FAN" ou "PRODUCER"
     @Column(name = "marketplace_role", length = 20)
     private String marketplaceRole;
@@ -137,12 +129,6 @@ public class User {
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
-
-    public String getProvider() { return provider; }
-    public void setProvider(String provider) { this.provider = provider; }
-
-    public String getProviderId() { return providerId; }
-    public void setProviderId(String providerId) { this.providerId = providerId; }
 
     public String getMarketplaceRole() { return marketplaceRole; }
     public void setMarketplaceRole(String marketplaceRole) { this.marketplaceRole = marketplaceRole; }

@@ -118,7 +118,7 @@ public class ArtistProfileService {
     private TrackStats importTopTracks(ArtistProfile profile) {
         List<SpotifyClient.SpotifyTrack> tracks;
         try {
-            tracks = spotifyClient.getTopTracks(profile.getSpotifyArtistId());
+            tracks = spotifyClient.getTopTracks(profile.getSpotifyArtistId(), null);
         } catch (SpotifyApiException e) {
             log.warn("Failed to fetch top tracks for artist {}: {}", profile.getName(), e.getMessage());
             return new TrackStats(0, 0, 0);

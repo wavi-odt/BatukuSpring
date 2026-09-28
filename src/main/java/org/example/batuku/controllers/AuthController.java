@@ -11,7 +11,9 @@ import org.example.batuku.utils.JwtUserDetailsService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -66,20 +68,68 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            User created = authService.register(request);
-            if (!created.isEnabled()) {
-                UserDetails ud = jwtUserDetailsService.loadUserByUsername(created.getEmail());
-                String token = jwtTokenUtil.generateToken(ud);
-                return ResponseEntity.status(HttpStatus.CREATED)
-                        .body(Map.of("pendingValidation", true, "email", created.getEmail(), "token", token));
-            }
-            return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(created));
+            authService.initRegistration(request);
+            return ResponseEntity.accepted()
+                    .body(Map.of("message", "Email de verificação enviado para " + request.getEmail()));
         } catch (RuntimeException ex) {
-            // Email duplicado ou outro erro de negócio
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT)
+            return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", ex.getMessage()));
         }
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> body) {
+        try {
+            authService.resendVerification(body.get("email"));
+            return ResponseEntity.ok(Map.of("message", "Email de verificação reenviado."));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        try {
+            User created = authService.confirmRegistration(token);
+            if (!created.isEnabled()) {
+                UserDetails ud = jwtUserDetailsService.loadUserByUsername(created.getEmail());
+                String jwt = jwtTokenUtil.generateToken(ud);
+                return ResponseEntity.ok(
+                        Map.of("pendingValidation", true, "email", created.getEmail(), "token", jwt));
+            }
+            UserDetails ud = jwtUserDetailsService.loadUserByUsername(created.getEmail());
+            String jwt = jwtTokenUtil.generateToken(ud);
+            return ResponseEntity.ok(Map.of("token", jwt, "user", UserResponse.from(created)));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/auth/oauth2/upgrade-to-artist
+     *
+     * Converte uma conta FAN (criada via OAuth2) para ARTIST.
+     * Necessário quando o utilizador iniciou o registo OAuth com intenção de artista.
+     * Cria o ArtistProfile, coloca enabled=false e devolve um novo JWT com ROLE_ARTIST.
+     */
+    @PostMapping("/oauth2/upgrade-to-artist")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> upgradeToArtist(@AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        authService.upgradeToArtist(user);
+        UserDetails updated = jwtUserDetailsService.loadUserByUsername(user.getEmail());
+        String token = jwtTokenUtil.generateToken(updated);
+        return ResponseEntity.ok(Map.of("pendingValidation", true, "token", token, "email", user.getEmail()));
+    }
+
+    @PostMapping("/welcome")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> sendWelcome(@AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        if (user.getUserRole() == User.UserRole.FAN && user.isEnabled()) {
+            try { authService.sendWelcomeEmail(user); } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok().build();
     }
 
     /**

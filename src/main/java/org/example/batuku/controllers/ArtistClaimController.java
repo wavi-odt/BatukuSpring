@@ -29,7 +29,7 @@ public class ArtistClaimController {
     }
 
     @PostMapping(consumes = "multipart/form-data")
-    @PreAuthorize("hasRole('ARTIST')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ArtistClaimResponse> submit(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam String spotifyArtistId,
@@ -43,7 +43,7 @@ public class ArtistClaimController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('ARTIST')")
+    @PreAuthorize("isAuthenticated()")
     public List<ArtistClaimResponse> myRequests(
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());

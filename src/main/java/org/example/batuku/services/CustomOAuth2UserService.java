@@ -3,11 +3,13 @@ package org.example.batuku.services;
 import org.example.batuku.domain.DiscordAccount;
 import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
+import org.example.batuku.domain.UserProvider;
 import org.example.batuku.oauth2.DiscordOAuth2UserInfo;
 import org.example.batuku.oauth2.OAuth2UserInfo;
 import org.example.batuku.oauth2.OAuth2UserInfoFactory;
 import org.example.batuku.repository.DiscordAccountRepository;
 import org.example.batuku.repository.RoleRepository;
+import org.example.batuku.repository.UserProviderRepository;
 import org.example.batuku.repository.UserRepository;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -17,6 +19,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -25,21 +28,24 @@ import java.util.UUID;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
+    private final UserProviderRepository userProviderRepository;
     private final RoleRepository roleRepository;
     private final DiscordAccountRepository discordAccountRepository;
     private final GamificationService gamificationService;
     private final EmailService emailService;
 
     public CustomOAuth2UserService(UserRepository userRepository,
+                                   UserProviderRepository userProviderRepository,
                                    RoleRepository roleRepository,
                                    DiscordAccountRepository discordAccountRepository,
                                    GamificationService gamificationService,
                                    EmailService emailService) {
-        this.userRepository           = userRepository;
-        this.roleRepository           = roleRepository;
+        this.userRepository          = userRepository;
+        this.userProviderRepository  = userProviderRepository;
+        this.roleRepository          = roleRepository;
         this.discordAccountRepository = discordAccountRepository;
-        this.gamificationService      = gamificationService;
-        this.emailService             = emailService;
+        this.gamificationService     = gamificationService;
+        this.emailService            = emailService;
     }
 
     @Override
@@ -68,26 +74,28 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     private User findOrCreateUser(String provider, OAuth2UserInfo userInfo) {
-        Optional<User> byProvider = userRepository.findByProviderAndProviderId(provider, userInfo.getId());
-        if (byProvider.isPresent()) {
-            User user = byProvider.get();
+        // 1. Conta já ligada a este provider
+        Optional<UserProvider> existingProvider = userProviderRepository
+                .findByProviderAndProviderId(provider, userInfo.getId());
+        if (existingProvider.isPresent()) {
+            User user = existingProvider.get().getUser();
             user.setAvatarUrl(userInfo.getAvatarUrl());
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);
         }
 
+        // 2. Conta com o mesmo email — associa este provider sem criar nova conta
         Optional<User> byEmail = userRepository.findByEmail(userInfo.getEmail().trim().toLowerCase());
         if (byEmail.isPresent()) {
             User user = byEmail.get();
-            user.setProvider(provider);
-            user.setProviderId(userInfo.getId());
-            if (userInfo.getAvatarUrl() != null) {
-                user.setAvatarUrl(userInfo.getAvatarUrl());
-            }
+            if (userInfo.getAvatarUrl() != null) user.setAvatarUrl(userInfo.getAvatarUrl());
             user.setUpdatedAt(LocalDateTime.now());
-            return userRepository.save(user);
+            userRepository.save(user);
+            linkProvider(user, provider, userInfo.getId());
+            return user;
         }
 
+        // 3. Conta nova
         return createUser(provider, userInfo);
     }
 
@@ -101,16 +109,24 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setName(userInfo.getName() != null ? userInfo.getName() : userInfo.getEmail().split("@")[0]);
         user.setAvatarUrl(userInfo.getAvatarUrl());
         user.setPassword(UUID.randomUUID().toString());
-        user.setProvider(provider);
-        user.setProviderId(userInfo.getId());
         user.setUserRole(User.UserRole.FAN);
-        user.setRoles(Set.of(fanRole));
+        user.setRoles(new HashSet<>(Set.of(fanRole)));
         user.setEnabled(true);
 
         User saved = userRepository.save(user);
+        linkProvider(saved, provider, userInfo.getId());
         try { gamificationService.inicializarPontos(saved); } catch (Exception ignored) {}
-        try { emailService.sendWelcomeEmail(saved); } catch (Exception ignored) {}
         return saved;
+    }
+
+    private void linkProvider(User user, String provider, String providerId) {
+        if (!userProviderRepository.existsByUserIdAndProvider(user.getId(), provider)) {
+            UserProvider up = new UserProvider();
+            up.setUser(user);
+            up.setProvider(provider);
+            up.setProviderId(providerId);
+            userProviderRepository.save(up);
+        }
     }
 
     private void syncDiscordAccount(User user, DiscordOAuth2UserInfo userInfo) {

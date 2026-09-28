@@ -21,6 +21,18 @@ public class GlobalExceptionHandler {
         return Map.of("error", "Not found");
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleIllegalArgument(IllegalArgumentException e) {
+        return Map.of("error", e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleIllegalState(IllegalStateException e) {
+        return Map.of("error", e.getMessage());
+    }
+
     @ExceptionHandler(SpotifyApiException.class)
     public ResponseEntity<Map<String, String>> handleSpotifyException(SpotifyApiException e) {
         return ResponseEntity.status(e.getHttpStatus())

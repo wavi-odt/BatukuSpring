@@ -27,8 +27,9 @@ public class ArtistClaimDetailResponse {
         ArtistClaimDetailResponse r = new ArtistClaimDetailResponse();
         r.id = claim.getId();
         r.status = claim.getStatus().name();
-        r.artistProfileId = claim.getArtistProfile().getId();
-        r.artistName = claim.getArtistProfile().getName();
+        r.artistProfileId = claim.getArtistProfile() != null ? claim.getArtistProfile().getId() : null;
+        r.artistName = claim.getArtistProfile() != null
+                ? claim.getArtistProfile().getName() : claim.getSpotifyArtistName();
         r.userId = claim.getUser().getId();
         r.userName = claim.getUser().getName();
         r.userEmail = claim.getUser().getEmail();

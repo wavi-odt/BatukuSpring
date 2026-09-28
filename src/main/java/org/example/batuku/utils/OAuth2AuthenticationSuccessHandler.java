@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Component
@@ -49,11 +50,24 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             return;
         }
 
-        var userDetails = jwtUserDetailsService.loadUserByUsername(userOpt.get().getEmail());
+        User user = userOpt.get();
+
+        if (!user.isEnabled()) {
+            String errorUrl = UriComponentsBuilder.fromUriString(redirectUri)
+                    .queryParam("error", "account_pending")
+                    .build().toUriString();
+            getRedirectStrategy().sendRedirect(request, response, errorUrl);
+            return;
+        }
+
+        var userDetails = jwtUserDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtTokenUtil.generateToken(userDetails);
+
+        boolean isNewUser = user.getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(30));
 
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("token", token)
+                .queryParam("new", isNewUser)
                 .build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);

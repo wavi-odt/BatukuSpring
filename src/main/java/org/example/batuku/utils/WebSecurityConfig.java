@@ -64,6 +64,8 @@ public class WebSecurityConfig {
                 .requestMatchers(
                     "/authenticate",
                     "/api/auth/register",
+                    "/api/auth/verify-email",
+                    "/api/auth/resend-verification",
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/ws",

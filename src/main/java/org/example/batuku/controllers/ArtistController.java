@@ -261,7 +261,9 @@ public class ArtistController {
     }
 
     @GetMapping("/{id}/top-tracks")
-    public ResponseEntity<List<SpotifyTrackResponse>> getTopTracks(@PathVariable Long id) {
+    public ResponseEntity<List<SpotifyTrackResponse>> getTopTracks(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "PT") String market) {
 
         ArtistProfile profile = artistProfileRepository.findById(id).orElseThrow();
 
@@ -275,7 +277,7 @@ public class ArtistController {
         List<SpotifyTrackResponse> tracks;
         try {
             tracks = spotifyClient
-                    .getTopTracks(profile.getSpotifyArtistId())
+                    .getTopTracks(profile.getSpotifyArtistId(), market)
                     .stream()
                     .map(t -> new SpotifyTrackResponse(
                             t.id(),
@@ -288,10 +290,10 @@ public class ArtistController {
                     .toList();
             log.info("top-tracks: Spotify returned {} tracks", tracks.size());
         } catch (SpotifyApiException e) {
-            log.warn("top-tracks: top-tracks endpoint failed (HTTP {}), falling back to search", e.getHttpStatus());
+            log.warn("top-tracks: top-tracks endpoint failed (HTTP {}), falling back to filtered search", e.getHttpStatus());
             try {
                 tracks = spotifyClient
-                        .searchTracksByArtistName(profile.getName(), 10)
+                        .searchTracksByArtistId(profile.getSpotifyArtistId(), profile.getName(), 10, market)
                         .stream()
                         .map(t -> new SpotifyTrackResponse(
                                 t.id(),
@@ -302,9 +304,9 @@ public class ArtistController {
                                 t.album() != null ? t.album().coverUrl() : null
                         ))
                         .toList();
-                log.info("top-tracks: search fallback returned {} tracks", tracks.size());
+                log.info("top-tracks: filtered search returned {} tracks", tracks.size());
             } catch (SpotifyApiException ex) {
-                log.warn("top-tracks: search fallback also failed (HTTP {})", ex.getHttpStatus());
+                log.warn("top-tracks: filtered search also failed (HTTP {})", ex.getHttpStatus());
                 tracks = List.of();
             }
         }

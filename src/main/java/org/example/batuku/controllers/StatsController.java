@@ -58,8 +58,10 @@ public class StatsController {
             @RequestParam(defaultValue = "30d") String period) {
 
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-        ArtistProfile profile = artistProfileRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Sem perfil de artista"));
+        if (artistProfileRepository.findByUserId(user.getId()).isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        ArtistProfile profile = artistProfileRepository.findByUserId(user.getId()).get();
         Long artistId = profile.getId();
 
         int days = switch (period) {

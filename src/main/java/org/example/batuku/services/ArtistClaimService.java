@@ -46,19 +46,14 @@ public class ArtistClaimService {
     @Transactional
     public ArtistClaimResponse submitClaim(User user, String spotifyArtistId,
                                             MultipartFile selfie, MultipartFile idDocument) {
-        ArtistProfile profile = artistProfileRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Utilizador não tem perfil de artista associado."));
-
-        if (profile.isClaimed()) {
-            throw new IllegalStateException("Este perfil de artista já foi reclamado.");
-        }
-
-        if (claimRepository.existsByArtistProfileIdAndStatus(
-                profile.getId(), ArtistClaimRequest.ClaimStatus.PENDING)) {
+        if (claimRepository.existsByUserIdAndStatus(user.getId(), ArtistClaimRequest.ClaimStatus.PENDING)) {
             throw new IllegalStateException(
-                    "Já existe um pedido de claim pendente para este perfil. Aguarda a revisão.");
+                    "Já existe um pedido de claim pendente. Aguarda a revisão.");
         }
+
+        artistProfileRepository.findByUserId(user.getId()).ifPresent(p -> {
+            if (p.isClaimed()) throw new IllegalStateException("Este perfil de artista já foi reclamado.");
+        });
 
         SpotifyClient.SpotifyArtist spotifyArtist = spotifyClient.getArtist(spotifyArtistId);
 
@@ -69,7 +64,6 @@ public class ArtistClaimService {
         String idDocumentKey = storageService.store(idDocument, FileCategory.ID_DOCUMENT);
 
         ArtistClaimRequest claim = new ArtistClaimRequest();
-        claim.setArtistProfile(profile);
         claim.setUser(user);
         claim.setSpotifyArtistId(spotifyArtistId);
         claim.setSpotifyArtistName(spotifyArtist.name());
@@ -78,7 +72,9 @@ public class ArtistClaimService {
         claim.setIdDocumentKey(idDocumentKey);
         claim.setStatus(ArtistClaimRequest.ClaimStatus.PENDING);
 
-        return ArtistClaimResponse.from(claimRepository.save(claim));
+        ArtistClaimResponse response = ArtistClaimResponse.from(claimRepository.save(claim));
+        try { emailService.sendArtistPendingEmail(user); } catch (Exception ignored) {}
+        return response;
     }
 
     public List<ArtistClaimResponse> findByUser(Long userId) {
@@ -112,38 +108,54 @@ public class ArtistClaimService {
         claim.setReviewedBy(admin);
         claim.setReviewedAt(LocalDateTime.now());
 
-        ArtistProfile autoCreated = claim.getArtistProfile();
-
-        // Se existe um perfil importado pelo admin com este Spotify ID, faz merge:
-        // liga o utilizador a esse perfil e elimina o perfil vazio criado no registo.
+        // Procura perfil importado pelo admin com este Spotify ID (sem utilizador associado)
         ArtistProfile imported = claim.getSpotifyArtistId() != null
                 ? artistProfileRepository.findBySpotifyArtistId(claim.getSpotifyArtistId())
                         .filter(p -> p.getUser() == null)
                         .orElse(null)
                 : null;
 
+        // Perfil previamente auto-criado (fluxo antigo) ou null (fluxo novo)
+        ArtistProfile existing = claim.getArtistProfile();
+
         ArtistProfile finalProfile;
         if (imported != null) {
+            // Usa o perfil importado do Spotify; elimina o perfil auto-criado se existir
             imported.setClaimed(true);
             imported.setUser(claim.getUser());
             if (claim.getSpotifyArtistName() != null)     imported.setName(claim.getSpotifyArtistName());
             if (claim.getSpotifyArtistImageUrl() != null) imported.setImageUrl(claim.getSpotifyArtistImageUrl());
-            finalProfile = artistProfileRepository.save(imported);
 
-            // Aponta o claim para o perfil correto antes de apagar o vazio
+            if (existing != null && !existing.getId().equals(imported.getId())) {
+                claim.setArtistProfile(null);
+                claimRepository.save(claim);
+                artistProfileRepository.delete(existing);
+                artistProfileRepository.flush();
+            }
+
+            finalProfile = artistProfileRepository.save(imported);
             claim.setArtistProfile(finalProfile);
-            claimRepository.save(claim);
-            artistProfileRepository.delete(autoCreated);
+        } else if (existing != null) {
+            // Fluxo antigo: atualiza o perfil auto-criado
+            existing.setClaimed(true);
+            existing.setUser(claim.getUser());
+            if (claim.getSpotifyArtistId() != null)       existing.setSpotifyArtistId(claim.getSpotifyArtistId());
+            if (claim.getSpotifyArtistName() != null)     existing.setName(claim.getSpotifyArtistName());
+            if (claim.getSpotifyArtistImageUrl() != null) existing.setImageUrl(claim.getSpotifyArtistImageUrl());
+            finalProfile = artistProfileRepository.save(existing);
         } else {
-            autoCreated.setClaimed(true);
-            autoCreated.setUser(claim.getUser());
-            if (claim.getSpotifyArtistId() != null)       autoCreated.setSpotifyArtistId(claim.getSpotifyArtistId());
-            if (claim.getSpotifyArtistName() != null)     autoCreated.setName(claim.getSpotifyArtistName());
-            if (claim.getSpotifyArtistImageUrl() != null) autoCreated.setImageUrl(claim.getSpotifyArtistImageUrl());
-            finalProfile = autoCreated;
+            // Fluxo novo: cria o perfil agora
+            ArtistProfile newProfile = new ArtistProfile();
+            newProfile.setName(claim.getSpotifyArtistName() != null
+                    ? claim.getSpotifyArtistName() : claim.getUser().getName());
+            newProfile.setImageUrl(claim.getSpotifyArtistImageUrl());
+            newProfile.setSpotifyArtistId(claim.getSpotifyArtistId());
+            newProfile.setClaimed(true);
+            newProfile.setUser(claim.getUser());
+            finalProfile = artistProfileRepository.save(newProfile);
+            claim.setArtistProfile(finalProfile);
         }
 
-        // Ativa a conta se estava pendente de validação
         User claimant = claim.getUser();
         if (!claimant.isEnabled()) {
             claimant.setEnabled(true);
@@ -165,7 +177,7 @@ public class ArtistClaimService {
         claim.setReviewedAt(LocalDateTime.now());
         claimRepository.save(claim);
 
-        emailService.sendClaimDoubtfulEmail(claim.getUser(), claim.getArtistProfile());
+        emailService.sendClaimDoubtfulEmail(claim.getUser(), claim.getSpotifyArtistName());
 
         return toDetailResponse(claim);
     }
