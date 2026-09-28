@@ -74,11 +74,13 @@ public class S3FileStorageService implements FileStorageService {
 
     @Override
     public String resolveUrl(String key, FileCategory category) {
-        if (category == FileCategory.AVATAR) {
-            return props.getS3().getAvatarPublicBaseUrl() + "/" + key;
+        String bucket = bucket(category);
+        String baseUrl = publicBaseUrl(category);
+        if (baseUrl != null && !baseUrl.isEmpty()) {
+            return baseUrl + "/" + key;
         }
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucket(category))
+                .bucket(bucket)
                 .key(key)
                 .build();
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
@@ -87,6 +89,15 @@ public class S3FileStorageService implements FileStorageService {
                 .build();
         PresignedGetObjectRequest presigned = presigner.presignGetObject(presignRequest);
         return presigned.url().toString();
+    }
+
+    private String publicBaseUrl(FileCategory category) {
+        return switch (category) {
+            case AVATAR -> props.getS3().getAvatarPublicBaseUrl();
+            case COVER -> props.getS3().getCoverPublicBaseUrl();
+            case SELFIE, ID_DOCUMENT -> null;
+            default -> props.getS3().getAudioPublicBaseUrl();
+        };
     }
 
     @Override

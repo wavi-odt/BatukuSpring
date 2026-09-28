@@ -40,7 +40,9 @@ public class StorageProperties {
         private String audioBucket = "batuku-audio";
         private String coverBucket = "batuku-covers";
         private String verificationBucket = "batuku-verification";
-        private String avatarPublicBaseUrl;
+        private String avatarPublicBaseUrl = "";
+        private String audioPublicBaseUrl = "";
+        private String coverPublicBaseUrl = "";
         private int audioPresignMinutes = 15;
 
         public String getEndpoint() { return endpoint; }
@@ -69,6 +71,12 @@ public class StorageProperties {
 
         public String getAvatarPublicBaseUrl() { return avatarPublicBaseUrl; }
         public void setAvatarPublicBaseUrl(String avatarPublicBaseUrl) { this.avatarPublicBaseUrl = avatarPublicBaseUrl; }
+
+        public String getAudioPublicBaseUrl() { return audioPublicBaseUrl; }
+        public void setAudioPublicBaseUrl(String audioPublicBaseUrl) { this.audioPublicBaseUrl = audioPublicBaseUrl; }
+
+        public String getCoverPublicBaseUrl() { return coverPublicBaseUrl; }
+        public void setCoverPublicBaseUrl(String coverPublicBaseUrl) { this.coverPublicBaseUrl = coverPublicBaseUrl; }
 
         public int getAudioPresignMinutes() { return audioPresignMinutes; }
         public void setAudioPresignMinutes(int audioPresignMinutes) { this.audioPresignMinutes = audioPresignMinutes; }
