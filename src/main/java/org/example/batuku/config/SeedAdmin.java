@@ -4,6 +4,7 @@ import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
 import org.example.batuku.repository.RoleRepository;
 import org.example.batuku.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,15 +15,19 @@ import org.springframework.core.annotation.Order;
 import java.util.Set;
 
 /**
- * Cria o utilizador admin padrão se ainda não existir.
+ * Cria o utilizador admin padrão UMA ÚNICA VEZ, na primeira vez que a app
+ * arranca sem ele existir. Se o admin já existir, não faz nada — preserva
+ * quaisquer alterações feitas pela aplicação (ex.: mudança de password).
  *
- * Credenciais padrão (alterar em produção via variáveis de ambiente):
- *   email:    admin@batuku.com
+ * Credenciais padrão (alterar em produção via variável de ambiente ADMIN_SEED_PASSWORD):
+ *   email:    batuku.suporte@gmail.com
  *   username: admin
- *   password: admin1234
  */
 @Configuration
 public class SeedAdmin {
+
+    @Value("${batuku.admin.seed-password:*#aDMINbATUKUuP}")
+    private String seedPassword;
 
     @Bean
     @Order(2)
@@ -30,10 +35,7 @@ public class SeedAdmin {
                                       RoleRepository roleRepository,
                                       PasswordEncoder passwordEncoder) {
         return args -> {
-            if (userRepository.existsByEmail("admin@batuku.com")) {
-                User existing = userRepository.findByEmail("admin@batuku.com").orElseThrow();
-                existing.setPassword(passwordEncoder.encode("*#aDMINbATUKUuP"));
-                userRepository.save(existing);
+            if (userRepository.existsByEmail("batuku.suporte@gmail.com")) {
                 return;
             }
 
@@ -41,16 +43,16 @@ public class SeedAdmin {
                     .orElseThrow(() -> new IllegalStateException("ROLE_ADMIN não encontrada. SeedRoles deve correr primeiro."));
 
             User admin = new User();
-            admin.setEmail("admin@batuku.com");
+            admin.setEmail("batuku.suporte@gmail.com");
             admin.setUsername("admin");
-            admin.setPassword(passwordEncoder.encode("*#aDMINbATUKUuP"));
+            admin.setPassword(passwordEncoder.encode(seedPassword));
             admin.setName("Administrador");
             admin.setUserRole(User.UserRole.ADMIN);
             admin.setRoles(Set.of(roleAdmin));
             admin.setEnabled(true);
 
             userRepository.save(admin);
-            System.out.println("Utilizador admin criado: admin@batuku.com / *#aDMINbATUKUuP");
+            System.out.println("Utilizador admin criado: batuku.suporte@gmail.com");
         };
     }
 }
