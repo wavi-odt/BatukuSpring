@@ -1,9 +1,11 @@
 package org.example.batuku.controllers;
 
+import org.example.batuku.domain.Location;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.RegisterRequest;
 import org.example.batuku.dto.UserResponse;
 import org.example.batuku.repository.ArtistProfileRepository;
+import org.example.batuku.repository.LocationRepository;
 import org.example.batuku.repository.UserRepository;
 import org.example.batuku.services.AuthService;
 import org.example.batuku.utils.JwtTokenUtil;
@@ -18,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,15 +38,18 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final LocationRepository locationRepository;
     private final JwtTokenUtil jwtTokenUtil;
     private final JwtUserDetailsService jwtUserDetailsService;
 
     public AuthController(AuthService authService, UserRepository userRepository,
                           ArtistProfileRepository artistProfileRepository,
+                          LocationRepository locationRepository,
                           JwtTokenUtil jwtTokenUtil, JwtUserDetailsService jwtUserDetailsService) {
         this.authService = authService;
         this.userRepository = userRepository;
         this.artistProfileRepository = artistProfileRepository;
+        this.locationRepository = locationRepository;
         this.jwtTokenUtil = jwtTokenUtil;
         this.jwtUserDetailsService = jwtUserDetailsService;
     }
@@ -130,6 +136,15 @@ public class AuthController {
             try { authService.sendWelcomeEmail(user); } catch (Exception ignored) {}
         }
         return ResponseEntity.ok().build();
+    }
+
+    /** GET /api/auth/locations — lista pública de localizações canónicas para o formulário de registo. */
+    @GetMapping("/locations")
+    public ResponseEntity<List<Map<String, String>>> getLocations() {
+        List<Map<String, String>> locations = locationRepository.findAll().stream()
+                .map(l -> Map.of("value", l.getValue(), "group", l.getLocationGroup()))
+                .toList();
+        return ResponseEntity.ok(locations);
     }
 
     /**

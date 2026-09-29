@@ -66,6 +66,7 @@ public class WebSecurityConfig {
                     "/api/auth/register",
                     "/api/auth/verify-email",
                     "/api/auth/resend-verification",
+                    "/api/auth/locations",
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/ws",

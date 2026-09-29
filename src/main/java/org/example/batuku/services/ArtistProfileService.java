@@ -37,7 +37,7 @@ public class ArtistProfileService {
     public record AdminArtistListItem(Long id, String name, String imageUrl, boolean featuredOnHero, String genre, String location) {}
 
     private static final java.util.regex.Pattern SPOTIFY_URL_PATTERN =
-            java.util.regex.Pattern.compile("open\\.spotify\\.com/artist/([A-Za-z0-9]{22})");
+            java.util.regex.Pattern.compile("open\\.spotify\\.com/(?:intl-[a-z]{2}/)?artist/([A-Za-z0-9]{22})");
     private static final java.util.regex.Pattern SPOTIFY_ID_PATTERN =
             java.util.regex.Pattern.compile("^[A-Za-z0-9]{22}$");
 

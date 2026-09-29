@@ -32,6 +32,9 @@ public class RegisterRequest {
     // País é opcional, pode não ser enviado
     private String country;
 
+    // Localização opcional (valor canónico da tabela locations)
+    private String location;
+
     // Papel pretendido: "FAN" ou "ARTIST", se omitido fica FAN por defeito
     private String userRole;
 
@@ -51,6 +54,9 @@ public class RegisterRequest {
 
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
 
     public String getUserRole() { return userRole; }
     public void setUserRole(String userRole) { this.userRole = userRole; }

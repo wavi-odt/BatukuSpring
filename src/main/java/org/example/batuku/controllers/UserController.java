@@ -10,6 +10,7 @@ import org.example.batuku.repository.ArtistFollowRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.BadgeRepository;
 import org.example.batuku.repository.FollowRepository;
+import org.example.batuku.repository.LocationRepository;
 import org.example.batuku.repository.PlayRepository;
 import org.example.batuku.repository.UserBadgeRepository;
 import org.example.batuku.repository.UserPointsRepository;
@@ -36,6 +37,7 @@ public class UserController {
     private final FollowRepository followRepository;
     private final ArtistFollowRepository artistFollowRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final LocationRepository locationRepository;
     private final PlayRepository playRepository;
     private final UserPointsRepository userPointsRepository;
     private final UserBadgeRepository userBadgeRepository;
@@ -47,6 +49,7 @@ public class UserController {
                           FollowRepository followRepository,
                           ArtistFollowRepository artistFollowRepository,
                           ArtistProfileRepository artistProfileRepository,
+                          LocationRepository locationRepository,
                           PlayRepository playRepository,
                           UserPointsRepository userPointsRepository,
                           UserBadgeRepository userBadgeRepository,
@@ -57,6 +60,7 @@ public class UserController {
         this.followRepository = followRepository;
         this.artistFollowRepository = artistFollowRepository;
         this.artistProfileRepository = artistProfileRepository;
+        this.locationRepository = locationRepository;
         this.playRepository = playRepository;
         this.userPointsRepository = userPointsRepository;
         this.userBadgeRepository = userBadgeRepository;
@@ -145,6 +149,21 @@ public class UserController {
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
+        return ResponseEntity.ok(UserResponse.from(user));
+    }
+
+    /** PUT /api/users/me/location — actualiza a localização do utilizador autenticado. */
+    @PutMapping("/me/location")
+    public ResponseEntity<?> updateLocation(@RequestBody Map<String, String> body,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
+        String location = body.getOrDefault("location", "").trim();
+        if (!location.isEmpty() && !locationRepository.existsByValue(location)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Localização inválida."));
+        }
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        user.setLocation(location.isEmpty() ? null : location);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
         return ResponseEntity.ok(UserResponse.from(user));
     }
 

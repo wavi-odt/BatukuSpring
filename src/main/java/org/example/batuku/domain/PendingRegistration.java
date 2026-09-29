@@ -29,6 +29,9 @@ public class PendingRegistration {
     @Column(length = 100)
     private String country;
 
+    @Column(length = 200)
+    private String location;
+
     @Column(name = "user_role", nullable = false, length = 20)
     private String userRole;
 
@@ -57,6 +60,9 @@ public class PendingRegistration {
 
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
 
     public String getUserRole() { return userRole; }
     public void setUserRole(String userRole) { this.userRole = userRole; }

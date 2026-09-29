@@ -4,6 +4,7 @@ import org.example.batuku.domain.PendingRegistration;
 import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.RegisterRequest;
+import org.example.batuku.repository.LocationRepository;
 import org.example.batuku.repository.PendingRegistrationRepository;
 import org.example.batuku.repository.RoleRepository;
 import org.example.batuku.repository.UserRepository;
@@ -25,6 +26,7 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final PendingRegistrationRepository pendingRepository;
+    private final LocationRepository locationRepository;
     private final GamificationService gamificationService;
     private final EmailService emailService;
 
@@ -35,12 +37,14 @@ public class AuthService {
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
                        PendingRegistrationRepository pendingRepository,
+                       LocationRepository locationRepository,
                        GamificationService gamificationService,
                        EmailService emailService) {
         this.userRepository   = userRepository;
         this.roleRepository   = roleRepository;
         this.passwordEncoder  = passwordEncoder;
         this.pendingRepository = pendingRepository;
+        this.locationRepository = locationRepository;
         this.gamificationService = gamificationService;
         this.emailService     = emailService;
     }
@@ -61,6 +65,11 @@ public class AuthService {
         // Substitui qualquer registo pendente anterior com o mesmo email
         pendingRepository.deleteByEmail(request.getEmail().trim().toLowerCase());
 
+        if (request.getLocation() != null && !request.getLocation().isBlank()
+                && !locationRepository.existsByValue(request.getLocation())) {
+            throw new RuntimeException("Localização inválida.");
+        }
+
         boolean wantsArtist = "ARTIST".equalsIgnoreCase(request.getUserRole());
 
         PendingRegistration pending = new PendingRegistration();
@@ -70,6 +79,7 @@ public class AuthService {
         pending.setPassword(passwordEncoder.encode(request.getPassword()));
         pending.setName(request.getName().trim());
         pending.setCountry(request.getCountry());
+        pending.setLocation(request.getLocation());
         pending.setUserRole(wantsArtist ? "ARTIST" : "FAN");
         pending.setExpiresAt(LocalDateTime.now().plusHours(24));
 
@@ -115,6 +125,7 @@ public class AuthService {
         user.setPassword(pending.getPassword());
         user.setName(pending.getName());
         user.setCountry(pending.getCountry());
+        user.setLocation(pending.getLocation());
         user.setUserRole(userRole);
         user.setRoles(new HashSet<>(Set.of(springRole)));
         user.setEnabled(!wantsArtist);
