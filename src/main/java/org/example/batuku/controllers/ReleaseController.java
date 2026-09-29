@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -59,15 +60,18 @@ public class ReleaseController {
         return ResponseEntity.ok(track);
     }
 
-    /** Passo 3: publica o álbum (DRAFT para PUBLISHED). */
+    /** Passo 3: publica ou agenda o álbum. */
     @PostMapping("/{id}/publish")
     @PreAuthorize("hasRole('ARTIST')")
     public ResponseEntity<ReleaseResponse> publish(
             @AuthenticationPrincipal UserDetails userDetails,
-            @PathVariable Long id) {
+            @PathVariable Long id,
+            @RequestParam(value = "scheduledAt", required = false) String scheduledAt) {
 
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-        return ResponseEntity.ok(albumService.publish(id, user));
+        LocalDateTime scheduled = (scheduledAt != null && !scheduledAt.isBlank())
+                ? LocalDateTime.parse(scheduledAt) : null;
+        return ResponseEntity.ok(albumService.publish(id, user, scheduled));
     }
 
     /** Actualiza o título do lançamento. */

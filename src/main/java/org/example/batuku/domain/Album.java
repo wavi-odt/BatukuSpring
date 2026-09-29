@@ -39,8 +39,11 @@ public class Album {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
+
     public enum AlbumType { SINGLE, EP, ALBUM, MIXTAPE }
-    public enum Status    { DRAFT, PUBLISHED }
+    public enum Status    { DRAFT, SCHEDULED, PUBLISHED }
 
     public Long getId() { return id; }
 
@@ -66,4 +69,7 @@ public class Album {
     public void setStatus(Status status) { this.status = status; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    public LocalDateTime getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
 }

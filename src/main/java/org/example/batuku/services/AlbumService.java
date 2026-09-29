@@ -7,16 +7,22 @@ import org.example.batuku.repository.AlbumRepository;
 import org.example.batuku.repository.AlbumTrackRepository;
 import org.example.batuku.repository.CommentRepository;
 import org.example.batuku.repository.LikeRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class AlbumService {
+
+    private static final Logger log = LoggerFactory.getLogger(AlbumService.class);
 
     private final AlbumRepository albumRepository;
     private final AlbumTrackRepository albumTrackRepository;
@@ -117,9 +123,9 @@ public class AlbumService {
         return album;
     }
 
-    /** Passo 3: publica o álbum (muda de DRAFT para PUBLISHED). */
+    /** Passo 3: publica ou agenda o álbum. */
     @Transactional
-    public ReleaseResponse publish(Long albumId, User user) {
+    public ReleaseResponse publish(Long albumId, User user, LocalDateTime scheduledAt) {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Álbum não encontrado."));
 
@@ -137,9 +143,25 @@ public class AlbumService {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Um álbum precisa de pelo menos uma faixa.");
         }
 
-        album.setStatus(Album.Status.PUBLISHED);
+        if (scheduledAt != null && scheduledAt.isAfter(LocalDateTime.now())) {
+            album.setScheduledAt(scheduledAt);
+            album.setStatus(Album.Status.SCHEDULED);
+        } else {
+            album.setStatus(Album.Status.PUBLISHED);
+        }
         albumRepository.save(album);
         return toResponse(album);
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    @Transactional
+    public void publishDueAlbums() {
+        List<Album> due = albumRepository.findByScheduledAtBeforeAndStatus(LocalDateTime.now(), Album.Status.SCHEDULED);
+        for (Album a : due) {
+            a.setStatus(Album.Status.PUBLISHED);
+            albumRepository.save(a);
+            log.info("Auto-publicado lançamento agendado: id={} title={}", a.getId(), a.getTitle());
+        }
     }
 
     /** Limpeza: apaga um DRAFT se o upload falhou a meio. */

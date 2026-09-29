@@ -18,6 +18,7 @@ public class ReleaseResponse {
     private String description;
     private LocalDate releaseDate;
     private LocalDateTime createdAt;
+    private LocalDateTime scheduledAt;
     private List<TrackResponse> tracks;
 
     public static ReleaseResponse from(Album album, List<TrackResponse> tracks) {
@@ -32,6 +33,7 @@ public class ReleaseResponse {
         r.description = album.getDescription();
         r.releaseDate = album.getReleaseDate();
         r.createdAt = album.getCreatedAt();
+        r.scheduledAt = album.getScheduledAt();
         r.tracks = tracks;
         return r;
     }
@@ -46,5 +48,6 @@ public class ReleaseResponse {
     public String getDescription() { return description; }
     public LocalDate getReleaseDate() { return releaseDate; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public LocalDateTime getScheduledAt() { return scheduledAt; }
     public List<TrackResponse> getTracks() { return tracks; }
 }
