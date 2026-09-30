@@ -314,6 +314,35 @@ public class ArtistController {
         return ResponseEntity.ok(tracks);
     }
 
+    /** GET /api/artists/{id}/similar?limit=5: artistas com géneros em comum, por total de plays. */
+    @GetMapping("/{id}/similar")
+    public ResponseEntity<List<SimilarArtistResponse>> getSimilar(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        ArtistProfile target = artistProfileRepository.findById(id).orElseThrow();
+        List<String> targetGenres = target.getGenres() != null ? target.getGenres() : List.of();
+        if (targetGenres.isEmpty()) return ResponseEntity.ok(List.of());
+
+        List<SimilarArtistResponse> result = artistProfileRepository.findAll().stream()
+                .filter(a -> !a.getId().equals(id))
+                .filter(a -> a.getGenres() != null &&
+                             a.getGenres().stream().anyMatch(targetGenres::contains))
+                .map(a -> {
+                    String imageUrl = (a.isClaimed() && a.getUser() != null && a.getUser().getAvatarUrl() != null)
+                            ? a.getUser().getAvatarUrl()
+                            : a.getImageUrl();
+                    String genre = a.getGenres().get(0);
+                    long totalPlays = playRepository.countTotalPlaysByArtist(a.getId());
+                    return new SimilarArtistResponse(a.getId(), a.getName(), imageUrl, genre, totalPlays);
+                })
+                .sorted((x, y) -> Long.compare(y.totalPlays(), x.totalPlays()))
+                .limit(limit)
+                .toList();
+
+        return ResponseEntity.ok(result);
+    }
+
     /** GET /api/artists/suggested: artistas não seguidos, ordenados por score de engagement. */
     @GetMapping("/suggested")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)

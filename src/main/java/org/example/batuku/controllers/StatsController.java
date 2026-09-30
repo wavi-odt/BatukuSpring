@@ -5,8 +5,10 @@ import org.example.batuku.domain.Play;
 import org.example.batuku.domain.PointTransaction;
 import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
+import org.example.batuku.dto.ForecastResponse;
 import org.example.batuku.dto.StatsResponse;
 import org.example.batuku.repository.*;
+import org.example.batuku.services.ForecastService;
 import org.example.batuku.services.GamificationService;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +34,7 @@ public class StatsController {
     private final CommentRepository       commentRepository;
     private final JwtUserDetailsService   jwtUserDetailsService;
     private final GamificationService     gamificationService;
+    private final ForecastService         forecastService;
 
     public StatsController(ArtistProfileRepository artistProfileRepository,
                            PlayRepository playRepository,
@@ -40,7 +43,8 @@ public class StatsController {
                            TrackRepository trackRepository,
                            CommentRepository commentRepository,
                            JwtUserDetailsService jwtUserDetailsService,
-                           GamificationService gamificationService) {
+                           GamificationService gamificationService,
+                           ForecastService forecastService) {
         this.artistProfileRepository = artistProfileRepository;
         this.playRepository          = playRepository;
         this.likeRepository          = likeRepository;
@@ -49,6 +53,7 @@ public class StatsController {
         this.commentRepository       = commentRepository;
         this.jwtUserDetailsService   = jwtUserDetailsService;
         this.gamificationService     = gamificationService;
+        this.forecastService         = forecastService;
     }
 
     /** GET /api/stats/me?period=7d|30d|90d */
@@ -232,6 +237,22 @@ public class StatsController {
             case "IT" -> "Itália";
             default   -> code;
         };
+    }
+
+    /** GET /api/stats/me/forecast?historyDays=30&forecastDays=7 */
+    @GetMapping("/api/stats/me/forecast")
+    @PreAuthorize("hasRole('ARTIST')")
+    public ResponseEntity<ForecastResponse> getForecast(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(defaultValue = "30") int historyDays,
+            @RequestParam(defaultValue = "7")  int forecastDays) {
+
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        if (artistProfileRepository.findByUserId(user.getId()).isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        ArtistProfile profile = artistProfileRepository.findByUserId(user.getId()).get();
+        return ResponseEntity.ok(forecastService.forecastPlays(profile.getId(), historyDays, forecastDays));
     }
 
     /** POST /api/tracks/{id}/play: registar reprodução, devolve playId */

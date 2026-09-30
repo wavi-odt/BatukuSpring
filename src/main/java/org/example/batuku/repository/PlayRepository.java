@@ -96,6 +96,11 @@ public interface PlayRepository extends JpaRepository<Play, Long> {
                    "GROUP BY g.name ORDER BY plays DESC LIMIT 5", nativeQuery = true)
     List<Object[]> findTopGenresByUser(@Param("userId") Long userId);
 
+    @Query(value = "SELECT COUNT(*) FROM plays p INNER JOIN tracks t ON " +
+                   "p.track_id = t.id WHERE t.artist_profile_id = :artistId",
+           nativeQuery = true)
+    long countTotalPlaysByArtist(@Param("artistId") Long artistId);
+
     @Query(value = "SELECT p.track_id, t.title, t.cover_url, ap.name, ap.id, t.audio_url, t.source, t.spotify_url, MAX(p.played_at) AS last_played " +
                    "FROM plays p " +
                    "INNER JOIN tracks t ON p.track_id = t.id " +
