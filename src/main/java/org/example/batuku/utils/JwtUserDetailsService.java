@@ -27,12 +27,12 @@ public class JwtUserDetailsService implements UserDetailsService {
         User user = userRepository.findByEmailOrUsername(identifier)
                 .orElseThrow(() -> new UsernameNotFoundException("Utilizador não encontrado: " + identifier));
 
-        return new org.springframework.security.core.userdetails.User(
+        return new BatukuUserDetails(
                 user.getEmail(),
                 user.getPassword(),
                 user.isEnabled(),
-                true, true, true,
-                getGrantedAuthorities(user.getRoles())
+                getGrantedAuthorities(user.getRoles()),
+                user.getName()
         );
     }
 

@@ -53,6 +53,9 @@ public class JwtTokenUtil implements Serializable {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
         claims.put("roles", roles);
+        if (userDetails instanceof org.example.batuku.utils.BatukuUserDetails bud) {
+            claims.put("name", bud.getName());
+        }
         return doGenerateToken(claims, userDetails.getUsername());
     }
 
