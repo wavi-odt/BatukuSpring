@@ -88,6 +88,8 @@ public class ForecastService {
                 totalPlays, historyDays, avgDaily, trend, pctChange);
 
         String insight = groqClient.generateInsight(systemPrompt, userPrompt);
+        if (insight != null) insight = insight.replace("-", ",").trim();
+        if (insight == null || insight.isBlank()) insight = null;
         if (insight == null) {
             insight = switch (trend) {
                 case "CRESCENTE"   -> "As tuas reproduções estão a crescer — continua a publicar conteúdo regularmente.";
