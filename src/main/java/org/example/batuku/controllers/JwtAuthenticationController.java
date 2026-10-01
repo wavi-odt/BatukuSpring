@@ -1,5 +1,8 @@
 package org.example.batuku.controllers;
 
+import org.example.batuku.domain.User;
+import org.example.batuku.repository.UserRepository;
+import org.example.batuku.services.RefreshTokenService;
 import org.example.batuku.utils.JwtRequest;
 import org.example.batuku.utils.JwtResponse;
 import org.example.batuku.utils.JwtTokenUtil;
@@ -16,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 // ─── FICHEIRO DO PROFESSOR, NAO ALTERAR ────────────────────────────
 // Endpoint: POST /authenticate
 // Body: { "username": "email@exemplo.com", "password": "..." }
-// Resposta: { "token": "eyJ..." }
+// Resposta: { "token": "eyJ...", "refreshToken": "..." }
 @RestController
 @CrossOrigin
 public class JwtAuthenticationController {
@@ -29,6 +32,12 @@ public class JwtAuthenticationController {
 
     @Autowired
     private JwtUserDetailsService userDetailsService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RefreshTokenService refreshTokenService;
 
     @PostMapping("/authenticate")
     public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest) {
@@ -46,6 +55,11 @@ public class JwtAuthenticationController {
 
         final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
         final String token = jwtTokenUtil.generateToken(userDetails);
-        return ResponseEntity.ok(new JwtResponse(token));
+
+        User user = userRepository.findByEmail(authenticationRequest.getUsername())
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
+        String refreshToken = refreshTokenService.issue(user);
+
+        return ResponseEntity.ok(new JwtResponse(token, refreshToken));
     }
 }

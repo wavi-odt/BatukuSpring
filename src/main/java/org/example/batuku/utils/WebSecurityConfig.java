@@ -24,6 +24,7 @@ public class WebSecurityConfig {
 
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtRequestFilter jwtRequestFilter;
+    private final TokenRevocationFilter tokenRevocationFilter;
     private final CustomAuthenticationManager customAuthenticationManager;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
@@ -34,16 +35,18 @@ public class WebSecurityConfig {
 
     public WebSecurityConfig(JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
                              JwtRequestFilter jwtRequestFilter,
+                             TokenRevocationFilter tokenRevocationFilter,
                              CustomAuthenticationManager customAuthenticationManager,
                              CustomOAuth2UserService customOAuth2UserService,
                              OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler,
                              OAuth2AuthenticationFailureHandler oAuth2FailureHandler) {
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
-        this.jwtRequestFilter = jwtRequestFilter;
+        this.jwtRequestFilter            = jwtRequestFilter;
+        this.tokenRevocationFilter       = tokenRevocationFilter;
         this.customAuthenticationManager = customAuthenticationManager;
-        this.customOAuth2UserService = customOAuth2UserService;
-        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
-        this.oAuth2FailureHandler = oAuth2FailureHandler;
+        this.customOAuth2UserService     = customOAuth2UserService;
+        this.oAuth2SuccessHandler        = oAuth2SuccessHandler;
+        this.oAuth2FailureHandler        = oAuth2FailureHandler;
     }
 
     @Bean
@@ -67,6 +70,9 @@ public class WebSecurityConfig {
                     "/api/auth/verify-email",
                     "/api/auth/resend-verification",
                     "/api/auth/locations",
+                    "/api/auth/magic",
+                    "/api/auth/artist-claim-submit",
+                    "/api/auth/refresh-token",
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/ws",
@@ -83,6 +89,7 @@ public class WebSecurityConfig {
                         "/api/marketplace/genres", "/api/marketplace/stats", "/api/marketplace/producers").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/genres", "/api/genres/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/spotify/search/artists").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
@@ -92,6 +99,7 @@ public class WebSecurityConfig {
             );
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAfter(tokenRevocationFilter, JwtRequestFilter.class);
 
         return http.build();
     }

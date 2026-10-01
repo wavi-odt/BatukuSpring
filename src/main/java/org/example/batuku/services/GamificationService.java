@@ -13,16 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 
-import java.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class GamificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(GamificationService.class);
 
     /* ── Pontos ganhos por ação ──────────────────────────────────── */
     private static final Map<PointTransaction.ActionType, Integer> POINTS = Map.of(
@@ -30,23 +34,25 @@ public class GamificationService {
             PointTransaction.ActionType.LIKE,              5,
             PointTransaction.ActionType.COMMENT,          15,
             PointTransaction.ActionType.SHARE,            20,
+            PointTransaction.ActionType.FOLLOW,            5,
             PointTransaction.ActionType.MISSION_COMPLETE, 50
     );
 
     /* ── Pontos mínimos para cada nível (índice = nível) ────────── */
     private static final int[] LEVEL_THRESHOLDS = { 0, 0, 100, 300, 600, 1000, 1500, 2000, 3000, 4000, 5000 };
 
-    private final UserPointsRepository      userPointsRepository;
-    private final PointTransactionRepository transactionRepository;
-    private final BadgeRepository           badgeRepository;
-    private final UserBadgeRepository       userBadgeRepository;
-    private final UserRepository            userRepository;
-    private final PlayRepository            playRepository;
-    private final CommentRepository         commentRepository;
-    private final LikeRepository            likeRepository;
-    private final ArtistFollowRepository    artistFollowRepository;
-    private final PlaylistRepository        playlistRepository;
-    private final NotificationService       notificationService;
+    private final UserPointsRepository         userPointsRepository;
+    private final PointTransactionRepository   transactionRepository;
+    private final BadgeRepository              badgeRepository;
+    private final UserBadgeRepository          userBadgeRepository;
+    private final UserRepository               userRepository;
+    private final PlayRepository               playRepository;
+    private final CommentRepository            commentRepository;
+    private final LikeRepository               likeRepository;
+    private final ArtistFollowRepository       artistFollowRepository;
+    private final PlaylistRepository           playlistRepository;
+    private final NotificationService          notificationService;
+    private final UserChallengeRewardRepository challengeRewardRepository;
 
     public GamificationService(UserPointsRepository userPointsRepository,
                                PointTransactionRepository transactionRepository,
@@ -58,25 +64,32 @@ public class GamificationService {
                                LikeRepository likeRepository,
                                ArtistFollowRepository artistFollowRepository,
                                PlaylistRepository playlistRepository,
-                               NotificationService notificationService) {
-        this.userPointsRepository  = userPointsRepository;
-        this.transactionRepository = transactionRepository;
-        this.badgeRepository       = badgeRepository;
-        this.userBadgeRepository   = userBadgeRepository;
-        this.userRepository        = userRepository;
-        this.playRepository        = playRepository;
-        this.commentRepository     = commentRepository;
-        this.likeRepository        = likeRepository;
-        this.artistFollowRepository = artistFollowRepository;
-        this.playlistRepository    = playlistRepository;
-        this.notificationService   = notificationService;
+                               NotificationService notificationService,
+                               UserChallengeRewardRepository challengeRewardRepository) {
+        this.userPointsRepository    = userPointsRepository;
+        this.transactionRepository   = transactionRepository;
+        this.badgeRepository         = badgeRepository;
+        this.userBadgeRepository     = userBadgeRepository;
+        this.userRepository          = userRepository;
+        this.playRepository          = playRepository;
+        this.commentRepository       = commentRepository;
+        this.likeRepository          = likeRepository;
+        this.artistFollowRepository  = artistFollowRepository;
+        this.playlistRepository      = playlistRepository;
+        this.notificationService     = notificationService;
+        this.challengeRewardRepository = challengeRewardRepository;
     }
 
     /* ── Inicialização ────────────────────────────────────────────── */
 
     @Transactional
+    public void removerDadosUtilizador(User user) {
+        userPointsRepository.findByUserId(user.getId()).ifPresent(userPointsRepository::delete);
+    }
+
+    @Transactional
     public void inicializarPontos(User user) {
-        if (user.getUserRole() == User.UserRole.ADMIN) return;
+        if (user.getUserRole() != User.UserRole.FAN) return;
         if (userPointsRepository.findByUserId(user.getId()).isPresent()) return;
         UserPoints up = new UserPoints();
         up.setUser(user);
@@ -97,6 +110,7 @@ public class GamificationService {
     @Transactional
     public void adicionarPontos(User user, PointTransaction.ActionType actionType, int ganhos, Long referenceId) {
         if (ganhos == 0) return;
+        if (user.getUserRole() != User.UserRole.FAN) return;
 
         UserPoints up = userPointsRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
@@ -215,35 +229,64 @@ public class GamificationService {
 
     private static final int TOTAL_SETS = 3;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ChallengeResponse> obterDesafios(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
-        int setIndex = user.getChallengeSetOffset() % TOTAL_SETS;
-        return construirSet(userId, setIndex);
+        int setOffset = user.getChallengeSetOffset();
+        int setIndex  = setOffset % TOTAL_SETS;
+        List<ChallengeResponse> desafios = construirSet(userId, setIndex);
+        autoRewardCompleted(user, desafios, setOffset);
+        return desafios;
     }
+
+    private static final int ROTATION_BONUS_XP = 500;
 
     @Transactional
     public List<ChallengeResponse> avancarDesafios(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
-        int setIndex = user.getChallengeSetOffset() % TOTAL_SETS;
+        int setIndex  = user.getChallengeSetOffset() % TOTAL_SETS;
         List<ChallengeResponse> atual = construirSet(userId, setIndex);
         boolean todosCompletos = atual.stream().allMatch(ChallengeResponse::isCompleted);
         if (!todosCompletos) return null;
 
-        // Atribuir os pontos exactos de cada desafio completo
-        int totalXp = atual.stream().mapToInt(ChallengeResponse::getXp).sum();
-        adicionarPontos(user, PointTransaction.ActionType.MISSION_COMPLETE, totalXp, null);
-
-        // Notificar conclusão do conjunto
-        notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
-                "Completaste todos os desafios do conjunto " + (setIndex + 1) + "! +" + totalXp + " pts");
-
-        user.setChallengeSetOffset(user.getChallengeSetOffset() + 1);
+        int novoOffset = user.getChallengeSetOffset() + 1;
+        user.setChallengeSetOffset(novoOffset);
         userRepository.save(user);
-        int novoSet = user.getChallengeSetOffset() % TOTAL_SETS;
-        return construirSet(userId, novoSet);
+
+        if (novoOffset % TOTAL_SETS == 0) {
+            adicionarPontos(user, PointTransaction.ActionType.MISSION_COMPLETE, ROTATION_BONUS_XP, null);
+            notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
+                    "Completaste todos os conjuntos de desafios! Bónus de +" + ROTATION_BONUS_XP + " pts. Começa de novo!");
+        }
+
+        return construirSet(userId, novoOffset % TOTAL_SETS);
+    }
+
+    private void autoRewardCompleted(User user, List<ChallengeResponse> desafios, int setOffset) {
+        int setIndex = setOffset % TOTAL_SETS;
+        Set<String> jaRecompensados = challengeRewardRepository.findRewardedChallengeIds(user.getId(), setOffset);
+
+        boolean houveConclusaoNova = false;
+        for (ChallengeResponse ch : desafios) {
+            if (ch.isCompleted() && !jaRecompensados.contains(ch.getId())) {
+                adicionarPontos(user, PointTransaction.ActionType.MISSION_COMPLETE, ch.getXp(), null);
+                challengeRewardRepository.save(new UserChallengeReward(user, ch.getId(), setOffset));
+                jaRecompensados.add(ch.getId());
+                houveConclusaoNova = true;
+                log.info("Challenge '{}' (set {}) rewarded: +{} pts to user {}", ch.getId(), setOffset, ch.getXp(), user.getId());
+            }
+        }
+
+        if (houveConclusaoNova) {
+            long totalRecompensados = challengeRewardRepository.countByUserIdAndSetOffset(user.getId(), setOffset);
+            if (totalRecompensados >= desafios.size()) {
+                int totalXp = desafios.stream().mapToInt(ChallengeResponse::getXp).sum();
+                notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
+                        "Completaste todos os desafios do conjunto " + (setIndex + 1) + "! +" + totalXp + " pts");
+            }
+        }
     }
 
     private List<ChallengeResponse> construirSet(Long userId, int setIndex) {

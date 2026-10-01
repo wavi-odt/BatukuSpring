@@ -6,6 +6,7 @@ import org.example.batuku.domain.ArtistProfile;
 import org.example.batuku.domain.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -28,12 +29,18 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
     private final MailProperties mailProps;
+    private final LoginTokenService loginTokenService;
     private final RestClient restClient;
 
-    public EmailService(JavaMailSender mailSender, TemplateEngine templateEngine, MailProperties mailProps) {
-        this.mailSender     = mailSender;
-        this.templateEngine = templateEngine;
-        this.mailProps      = mailProps;
+    @Value("${batuku.app.base-url}")
+    private String appBaseUrl;
+
+    public EmailService(JavaMailSender mailSender, TemplateEngine templateEngine,
+                        MailProperties mailProps, LoginTokenService loginTokenService) {
+        this.mailSender        = mailSender;
+        this.templateEngine    = templateEngine;
+        this.mailProps         = mailProps;
+        this.loginTokenService = loginTokenService;
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
@@ -95,8 +102,13 @@ public class EmailService {
     }
 
     public void sendWelcomeEmail(User user) {
+        boolean isOAuth   = user.getPassword() == null;
+        String redirectTo = isOAuth ? "/settings" : "/home";
+        String magicToken = loginTokenService.generate(user, redirectTo);
         Context ctx = new Context();
-        ctx.setVariable("name", user.getName());
+        ctx.setVariable("name",      user.getName());
+        ctx.setVariable("magicLink", appBaseUrl + "/auto-login?token=" + magicToken);
+        ctx.setVariable("isOAuth",   isOAuth);
         send(user.getEmail(), "Bem-vindo ao Batuku!", "welcome", ctx);
     }
 
@@ -106,10 +118,25 @@ public class EmailService {
         send(user.getEmail(), "Registo recebido, aguarda validação", "artist-pending", ctx);
     }
 
+    public void sendArtistPendingEmailToAddress(String email, String name) {
+        Context ctx = new Context();
+        ctx.setVariable("name", name);
+        send(email, "Registo recebido, aguarda validação", "artist-pending", ctx);
+    }
+
+    public void sendArtistClaimDoubtfulToAddress(String email, String name, String artistName) {
+        Context ctx = new Context();
+        ctx.setVariable("name", name);
+        ctx.setVariable("artistName", artistName);
+        send(email, "O teu pedido precisa de mais informação", "claim-doubtful", ctx);
+    }
+
     public void sendClaimVerifiedEmail(User user, ArtistProfile profile) {
+        String magicToken = loginTokenService.generate(user, "/dashboard");
         Context ctx = new Context();
         ctx.setVariable("name", user.getName());
         ctx.setVariable("artistName", profile.getName());
+        ctx.setVariable("magicLink", appBaseUrl + "/auto-login?token=" + magicToken);
         send(user.getEmail(), "Perfil verificado, já podes publicar música!", "claim-verified", ctx);
     }
 

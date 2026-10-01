@@ -1,5 +1,8 @@
 package org.example.batuku.utils;
 
+import io.jsonwebtoken.Claims;
+import org.example.batuku.domain.User;
+import org.example.batuku.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
@@ -12,6 +15,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+
 @Component
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
@@ -19,10 +26,14 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
     private final JwtTokenUtil jwtTokenUtil;
     private final JwtUserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
-    public WebSocketAuthInterceptor(JwtTokenUtil jwtTokenUtil, JwtUserDetailsService userDetailsService) {
-        this.jwtTokenUtil = jwtTokenUtil;
+    public WebSocketAuthInterceptor(JwtTokenUtil jwtTokenUtil,
+                                     JwtUserDetailsService userDetailsService,
+                                     UserRepository userRepository) {
+        this.jwtTokenUtil    = jwtTokenUtil;
         this.userDetailsService = userDetailsService;
+        this.userRepository  = userRepository;
     }
 
     @Override
@@ -42,13 +53,26 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 try {
                     String email = jwtTokenUtil.getUsernameFromToken(token);
                     UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                    if (jwtTokenUtil.validateToken(token, userDetails)) {
-                        accessor.setUser(new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities()));
-                        log.info("[WS] STOMP CONNECT autenticado: {}", email);
-                    } else {
+                    if (!jwtTokenUtil.validateToken(token, userDetails)) {
                         log.warn("[WS] STOMP CONNECT token inválido para: {}", email);
+                        return null;
                     }
+
+                    // Verifica se o token foi emitido após o último logout
+                    User user = userRepository.findByEmail(email).orElse(null);
+                    if (user != null && user.getTokenValidFrom() != null) {
+                        Date issuedAt = jwtTokenUtil.getClaimFromToken(token, Claims::getIssuedAt);
+                        LocalDateTime tokenIat = issuedAt.toInstant()
+                                .atZone(ZoneId.systemDefault()).toLocalDateTime();
+                        if (tokenIat.isBefore(user.getTokenValidFrom())) {
+                            log.warn("[WS] STOMP CONNECT token revogado para: {}", email);
+                            return null;
+                        }
+                    }
+
+                    accessor.setUser(new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities()));
+                    log.info("[WS] STOMP CONNECT autenticado: {}", email);
                 } catch (Exception e) {
                     log.warn("[WS] STOMP CONNECT falhou: {}", e.getMessage());
                 }

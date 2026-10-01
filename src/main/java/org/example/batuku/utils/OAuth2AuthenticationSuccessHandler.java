@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.batuku.domain.User;
 import org.example.batuku.repository.UserRepository;
+import org.example.batuku.services.RefreshTokenService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -21,16 +22,19 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final JwtTokenUtil jwtTokenUtil;
     private final JwtUserDetailsService jwtUserDetailsService;
     private final UserRepository userRepository;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${app.oauth2.redirect-uri}")
     private String redirectUri;
 
     public OAuth2AuthenticationSuccessHandler(JwtTokenUtil jwtTokenUtil,
                                               JwtUserDetailsService jwtUserDetailsService,
-                                              UserRepository userRepository) {
-        this.jwtTokenUtil = jwtTokenUtil;
+                                              UserRepository userRepository,
+                                              RefreshTokenService refreshTokenService) {
+        this.jwtTokenUtil         = jwtTokenUtil;
         this.jwtUserDetailsService = jwtUserDetailsService;
-        this.userRepository = userRepository;
+        this.userRepository       = userRepository;
+        this.refreshTokenService  = refreshTokenService;
     }
 
     @Override
@@ -61,12 +65,14 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         }
 
         var userDetails = jwtUserDetailsService.loadUserByUsername(user.getEmail());
-        String token = jwtTokenUtil.generateToken(userDetails);
+        String token        = jwtTokenUtil.generateToken(userDetails);
+        String refreshToken = refreshTokenService.issue(user);
 
         boolean isNewUser = user.getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(30));
 
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("token", token)
+                .queryParam("refreshToken", refreshToken)
                 .queryParam("new", isNewUser)
                 .build().toUriString();
 

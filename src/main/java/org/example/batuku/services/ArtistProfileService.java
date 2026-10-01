@@ -1,10 +1,14 @@
 package org.example.batuku.services;
 
 import org.example.batuku.domain.ArtistProfile;
+import org.example.batuku.domain.Genre;
 import org.example.batuku.domain.Track;
+import org.example.batuku.domain.UnmappedGenre;
 import org.example.batuku.exception.SpotifyApiException;
 import org.example.batuku.repository.ArtistProfileRepository;
+import org.example.batuku.repository.GenreRepository;
 import org.example.batuku.repository.TrackRepository;
+import org.example.batuku.repository.UnmappedGenreRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,20 +25,28 @@ public class ArtistProfileService {
     private final ArtistProfileRepository artistProfileRepository;
     private final SpotifyClient spotifyClient;
     private final TrackRepository trackRepository;
+    private final GenreRepository genreRepository;
+    private final UnmappedGenreRepository unmappedGenreRepository;
 
     public ArtistProfileService(ArtistProfileRepository artistProfileRepository,
                                 SpotifyClient spotifyClient,
-                                TrackRepository trackRepository) {
-        this.artistProfileRepository = artistProfileRepository;
-        this.spotifyClient = spotifyClient;
-        this.trackRepository = trackRepository;
+                                TrackRepository trackRepository,
+                                GenreRepository genreRepository,
+                                UnmappedGenreRepository unmappedGenreRepository) {
+        this.artistProfileRepository  = artistProfileRepository;
+        this.spotifyClient            = spotifyClient;
+        this.trackRepository          = trackRepository;
+        this.genreRepository          = genreRepository;
+        this.unmappedGenreRepository  = unmappedGenreRepository;
     }
 
-    public record ImportResult(ArtistProfile profile, int tracksImported, int tracksUpdated, int tracksSkipped) {}
+    public record ImportResult(ArtistProfile profile, int tracksImported, int tracksUpdated, int tracksSkipped, List<String> unmappedGenres) {}
+    private record MappedGenres(List<String> mapped, List<String> unmapped) {}
     private record TrackStats(int imported, int updated, int skipped) {}
 
     public record HeroArtistDto(Long id, String name, String imageUrl) {}
     public record AdminArtistListItem(Long id, String name, String imageUrl, boolean featuredOnHero, String genre, String location) {}
+    public record UnmappedGenreDto(Long id, String name, int occurrences) {}
 
     private static final java.util.regex.Pattern SPOTIFY_URL_PATTERN =
             java.util.regex.Pattern.compile("open\\.spotify\\.com/(?:intl-[a-z]{2}/)?artist/([A-Za-z0-9]{22})");
@@ -102,17 +114,20 @@ public class ArtistProfileService {
                     return p;
                 });
 
+        MappedGenres genres = mapToCanonical(artist.genres());
         profile.setName(artist.name());
         profile.setImageUrl(artist.imageUrl());
         profile.setThumbnailUrl(artist.thumbnailUrl());
         profile.setSpotifyUrl(artist.spotifyUrl());
-        profile.setGenres(artist.genres());
+        profile.setGenres(genres.mapped());
+        profile.setSpotifyGenres(artist.genres() != null ? artist.genres() : List.of());
         profile.setPopularity(artist.popularity());
         profile.setFollowerCount(artist.followers() != null ? artist.followers().total() : null);
         profile = artistProfileRepository.save(profile);
 
+        persistUnmapped(genres.unmapped());
         TrackStats stats = importTopTracks(profile);
-        return new ImportResult(profile, stats.imported(), stats.updated(), stats.skipped());
+        return new ImportResult(profile, stats.imported(), stats.updated(), stats.skipped(), genres.unmapped());
     }
 
     private TrackStats importTopTracks(ArtistProfile profile) {
@@ -150,5 +165,68 @@ public class ArtistProfileService {
         log.info("Artist '{}': {} track(s) imported, {} updated, {} skipped (no preview URL)",
                 profile.getName(), imported, updated, skipped);
         return new TrackStats(imported, updated, skipped);
+    }
+
+    private void persistUnmapped(List<String> unmapped) {
+        for (String name : unmapped) {
+            unmappedGenreRepository.findByNameIgnoreCase(name).ifPresentOrElse(
+                    existing -> { existing.incrementOccurrences(); unmappedGenreRepository.save(existing); },
+                    () -> unmappedGenreRepository.save(new UnmappedGenre(name))
+            );
+        }
+    }
+
+    private MappedGenres mapToCanonical(List<String> spotifyGenres) {
+        if (spotifyGenres == null || spotifyGenres.isEmpty()) return new MappedGenres(List.of(), List.of());
+        List<String> canonical = genreRepository.findAll().stream()
+                .map(Genre::getName)
+                .toList();
+        List<String> mapped   = new java.util.ArrayList<>();
+        List<String> unmapped = new java.util.ArrayList<>();
+        for (String sg : spotifyGenres) {
+            canonical.stream().filter(c -> c.equalsIgnoreCase(sg)).findFirst()
+                    .ifPresentOrElse(mapped::add, () -> unmapped.add(sg));
+        }
+        return new MappedGenres(mapped.stream().distinct().toList(), unmapped.stream().distinct().toList());
+    }
+
+    public List<UnmappedGenreDto> listUnmappedGenres() {
+        return unmappedGenreRepository.findAllByOrderByOccurrencesDescNameAsc().stream()
+                .map(u -> new UnmappedGenreDto(u.getId(), u.getName(), u.getOccurrences()))
+                .toList();
+    }
+
+    @Transactional
+    public void promoteUnmappedGenre(Long id) {
+        UnmappedGenre u = unmappedGenreRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Género não encontrado: " + id));
+
+        String canonicalName = genreRepository.findByNameIgnoreCase(u.getName())
+                .map(Genre::getName)
+                .orElseGet(() -> {
+                    Genre genre = new Genre();
+                    genre.setName(u.getName());
+                    genre.setHue(0);
+                    genre.setCaboverdean(false);
+                    return genreRepository.save(genre).getName();
+                });
+
+        List<ArtistProfile> affected = artistProfileRepository.findBySpotifyGenreIgnoreCase(u.getName());
+        for (ArtistProfile p : affected) {
+            List<String> current = p.getGenres() != null ? new java.util.ArrayList<>(p.getGenres()) : new java.util.ArrayList<>();
+            if (current.stream().noneMatch(g -> g.equalsIgnoreCase(canonicalName))) {
+                current.add(canonicalName);
+                p.setGenres(current);
+                artistProfileRepository.save(p);
+            }
+        }
+        log.info("Promoted genre '{}': added to {} artist profile(s)", canonicalName, affected.size());
+
+        unmappedGenreRepository.delete(u);
+    }
+
+    @Transactional
+    public void dismissUnmappedGenre(Long id) {
+        unmappedGenreRepository.deleteById(id);
     }
 }

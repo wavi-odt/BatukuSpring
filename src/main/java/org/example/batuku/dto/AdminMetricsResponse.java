@@ -4,5 +4,6 @@ public record AdminMetricsResponse(
         long totalUsers,
         long activeArtistAccounts,
         long importedArtists,
-        long pendingClaimRequests
+        long pendingClaimRequests,
+        long unmappedGenres
 ) {}

@@ -7,7 +7,10 @@ import org.example.batuku.dto.UserResponse;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.LocationRepository;
 import org.example.batuku.repository.UserRepository;
+import org.example.batuku.domain.LoginToken;
 import org.example.batuku.services.AuthService;
+import org.example.batuku.services.LoginTokenService;
+import org.example.batuku.services.PendingArtistClaimService;
 import org.example.batuku.utils.JwtTokenUtil;
 import org.example.batuku.utils.JwtUserDetailsService;
 import jakarta.validation.Valid;
@@ -19,6 +22,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -41,17 +45,23 @@ public class AuthController {
     private final LocationRepository locationRepository;
     private final JwtTokenUtil jwtTokenUtil;
     private final JwtUserDetailsService jwtUserDetailsService;
+    private final LoginTokenService loginTokenService;
+    private final PendingArtistClaimService pendingArtistClaimService;
 
     public AuthController(AuthService authService, UserRepository userRepository,
                           ArtistProfileRepository artistProfileRepository,
                           LocationRepository locationRepository,
-                          JwtTokenUtil jwtTokenUtil, JwtUserDetailsService jwtUserDetailsService) {
+                          JwtTokenUtil jwtTokenUtil, JwtUserDetailsService jwtUserDetailsService,
+                          LoginTokenService loginTokenService,
+                          PendingArtistClaimService pendingArtistClaimService) {
         this.authService = authService;
         this.userRepository = userRepository;
         this.artistProfileRepository = artistProfileRepository;
         this.locationRepository = locationRepository;
         this.jwtTokenUtil = jwtTokenUtil;
         this.jwtUserDetailsService = jwtUserDetailsService;
+        this.loginTokenService = loginTokenService;
+        this.pendingArtistClaimService = pendingArtistClaimService;
     }
 
     /**
@@ -96,36 +106,51 @@ public class AuthController {
     @GetMapping("/verify-email")
     public ResponseEntity<?> verifyEmail(@RequestParam String token) {
         try {
-            User created = authService.confirmRegistration(token);
-            if (!created.isEnabled()) {
-                UserDetails ud = jwtUserDetailsService.loadUserByUsername(created.getEmail());
-                String jwt = jwtTokenUtil.generateToken(ud);
-                return ResponseEntity.ok(
-                        Map.of("pendingValidation", true, "email", created.getEmail(), "token", jwt));
+            AuthService.ConfirmResult result = authService.confirmRegistration(token);
+            if (result.isArtistPending()) {
+                // Email verificado mas User ainda não criado — devolve claimToken para submeter o claim
+                return ResponseEntity.ok(Map.of("pendingClaim", true, "claimToken", result.claimToken()));
             }
-            UserDetails ud = jwtUserDetailsService.loadUserByUsername(created.getEmail());
+            UserDetails ud = jwtUserDetailsService.loadUserByUsername(result.user().getEmail());
             String jwt = jwtTokenUtil.generateToken(ud);
-            return ResponseEntity.ok(Map.of("token", jwt, "user", UserResponse.from(created)));
+            return ResponseEntity.ok(Map.of("token", jwt, "user", UserResponse.from(result.user())));
         } catch (RuntimeException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
     }
 
     /**
-     * POST /api/auth/oauth2/upgrade-to-artist
-     *
-     * Converte uma conta FAN (criada via OAuth2) para ARTIST.
-     * Necessário quando o utilizador iniciou o registo OAuth com intenção de artista.
-     * Cria o ArtistProfile, coloca enabled=false e devolve um novo JWT com ROLE_ARTIST.
+     * POST /api/auth/artist-claim-submit (público — sem JWT)
+     * Submete os documentos de verificação para um registo de artista pendente.
+     * Usa o claimToken gerado após verificação de email.
      */
-    @PostMapping("/oauth2/upgrade-to-artist")
+    @PostMapping(value = "/artist-claim-submit", consumes = "multipart/form-data")
+    public ResponseEntity<?> artistClaimSubmit(
+            @RequestParam String claimToken,
+            @RequestParam String spotifyArtistId,
+            @RequestParam("selfie") MultipartFile selfie,
+            @RequestParam("idDocument") MultipartFile idDocument) {
+        try {
+            pendingArtistClaimService.submitClaim(claimToken, spotifyArtistId, selfie, idDocument);
+            return ResponseEntity.ok(Map.of("status", "PENDING"));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/auth/oauth2/init-artist-claim
+     *
+     * Converte um utilizador OAuth2 recém-criado num registo pendente de artista.
+     * Apaga o User da tabela users e cria um PendingRegistration com claimToken.
+     * O User só é criado na tabela users após o admin aprovar o claim.
+     */
+    @PostMapping("/oauth2/init-artist-claim")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> upgradeToArtist(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<?> initArtistClaim(@AuthenticationPrincipal UserDetails userDetails) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-        authService.upgradeToArtist(user);
-        UserDetails updated = jwtUserDetailsService.loadUserByUsername(user.getEmail());
-        String token = jwtTokenUtil.generateToken(updated);
-        return ResponseEntity.ok(Map.of("pendingValidation", true, "token", token, "email", user.getEmail()));
+        String claimToken = pendingArtistClaimService.initFromOAuth2(user);
+        return ResponseEntity.ok(Map.of("claimToken", claimToken));
     }
 
     @PostMapping("/welcome")
@@ -136,6 +161,18 @@ public class AuthController {
             try { authService.sendWelcomeEmail(user); } catch (Exception ignored) {}
         }
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/magic")
+    public ResponseEntity<?> magicLogin(@RequestParam String token) {
+        try {
+            LoginToken lt = loginTokenService.consume(token);
+            UserDetails ud = jwtUserDetailsService.loadUserByUsername(lt.getUser().getEmail());
+            String jwt = jwtTokenUtil.generateToken(ud);
+            return ResponseEntity.ok(Map.of("token", jwt, "redirectPath", lt.getRedirectPath()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     /** GET /api/auth/locations — lista pública de localizações canónicas para o formulário de registo. */

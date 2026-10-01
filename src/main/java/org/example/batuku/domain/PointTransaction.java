@@ -28,7 +28,7 @@ public class PointTransaction {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public enum ActionType { PLAY, LIKE, COMMENT, SHARE, MISSION_COMPLETE }
+    public enum ActionType { PLAY, LIKE, COMMENT, SHARE, MISSION_COMPLETE, FOLLOW }
 
     public Long getId() { return id; }
 

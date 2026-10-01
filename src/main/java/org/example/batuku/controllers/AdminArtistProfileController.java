@@ -6,10 +6,9 @@ import jakarta.validation.constraints.Pattern;
 import org.example.batuku.dto.ArtistImportResponse;
 import org.example.batuku.dto.ArtistSearchResult;
 import org.example.batuku.services.ArtistProfileService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 import java.util.List;
 
@@ -50,7 +49,24 @@ public class AdminArtistProfileController {
     @PostMapping("/import")
     public ArtistImportResponse importArtist(@RequestBody @Valid ImportRequest request) {
         ArtistProfileService.ImportResult result = artistProfileService.importArtist(request.spotifyArtistId());
-        return ArtistImportResponse.from(result.profile(), result.tracksImported(), result.tracksUpdated(), result.tracksSkipped());
+        return ArtistImportResponse.from(result.profile(), result.tracksImported(), result.tracksUpdated(), result.tracksSkipped(), result.unmappedGenres());
+    }
+
+    @GetMapping("/unmapped-genres")
+    public List<ArtistProfileService.UnmappedGenreDto> listUnmappedGenres() {
+        return artistProfileService.listUnmappedGenres();
+    }
+
+    @PostMapping("/unmapped-genres/{id}/promote")
+    public ResponseEntity<Void> promoteUnmappedGenre(@PathVariable Long id) {
+        artistProfileService.promoteUnmappedGenre(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/unmapped-genres/{id}")
+    public ResponseEntity<Void> dismissUnmappedGenre(@PathVariable Long id) {
+        artistProfileService.dismissUnmappedGenre(id);
+        return ResponseEntity.noContent().build();
     }
 
     record ImportRequest(

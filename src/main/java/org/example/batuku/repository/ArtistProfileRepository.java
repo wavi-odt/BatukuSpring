@@ -23,4 +23,7 @@ public interface ArtistProfileRepository extends JpaRepository<ArtistProfile, Lo
 
     List<ArtistProfile> findAllByOrderByNameAsc();
     List<ArtistProfile> findByFeaturedOnHeroTrueOrderByNameAsc();
+
+    @Query("SELECT a FROM ArtistProfile a JOIN a.spotifyGenres sg WHERE LOWER(sg) = LOWER(:genre)")
+    List<ArtistProfile> findBySpotifyGenreIgnoreCase(@Param("genre") String genre);
 }

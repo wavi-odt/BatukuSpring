@@ -26,6 +26,7 @@ public class UserResponse {
     private String bio;
     private String location;
     private String marketplaceRole;
+    private boolean hasPassword;
 
     // Construtor privado, obriga a usar o método estático
     private UserResponse() {}
@@ -49,6 +50,7 @@ public class UserResponse {
         r.bio              = user.getBio();
         r.location         = user.getLocation();
         r.marketplaceRole  = user.getMarketplaceRole();
+        r.hasPassword      = user.getPassword() != null;
         return r;
     }
 
@@ -67,4 +69,5 @@ public class UserResponse {
     public String getBio() { return bio; }
     public String getLocation() { return location; }
     public String getMarketplaceRole() { return marketplaceRole; }
+    public boolean isHasPassword()     { return hasPassword; }
 }

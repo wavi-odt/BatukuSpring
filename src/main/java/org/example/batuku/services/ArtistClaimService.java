@@ -2,11 +2,13 @@ package org.example.batuku.services;
 
 import org.example.batuku.domain.ArtistClaimRequest;
 import org.example.batuku.domain.ArtistProfile;
+import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.ArtistClaimDetailResponse;
 import org.example.batuku.dto.ArtistClaimResponse;
 import org.example.batuku.repository.ArtistClaimRequestRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
+import org.example.batuku.repository.RoleRepository;
 import org.example.batuku.repository.UserRepository;
 import org.example.batuku.storage.FileCategory;
 import org.example.batuku.storage.FileStorageService;
@@ -15,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class ArtistClaimService {
@@ -25,6 +29,7 @@ public class ArtistClaimService {
     private final ArtistClaimRequestRepository claimRepository;
     private final ArtistProfileRepository artistProfileRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final FileStorageService storageService;
     private final EmailService emailService;
     private final SpotifyClient spotifyClient;
@@ -32,12 +37,14 @@ public class ArtistClaimService {
     public ArtistClaimService(ArtistClaimRequestRepository claimRepository,
                                ArtistProfileRepository artistProfileRepository,
                                UserRepository userRepository,
+                               RoleRepository roleRepository,
                                FileStorageService storageService,
                                EmailService emailService,
                                SpotifyClient spotifyClient) {
         this.claimRepository = claimRepository;
         this.artistProfileRepository = artistProfileRepository;
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.storageService = storageService;
         this.emailService = emailService;
         this.spotifyClient = spotifyClient;
@@ -157,10 +164,12 @@ public class ArtistClaimService {
         }
 
         User claimant = claim.getUser();
-        if (!claimant.isEnabled()) {
-            claimant.setEnabled(true);
-            userRepository.save(claimant);
-        }
+        Role artistRole = roleRepository.findByName("ROLE_ARTIST")
+                .orElseThrow(() -> new RuntimeException("ROLE_ARTIST não encontrada."));
+        claimant.setUserRole(User.UserRole.ARTIST);
+        claimant.setRoles(new HashSet<>(Set.of(artistRole)));
+        claimant.setEnabled(true);
+        userRepository.save(claimant);
 
         ArtistClaimDetailResponse response = toDetailResponse(claimRepository.save(claim));
         try { emailService.sendClaimVerifiedEmail(claimant, finalProfile); } catch (Exception ignored) {}

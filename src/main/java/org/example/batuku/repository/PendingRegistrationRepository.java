@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface PendingRegistrationRepository extends JpaRepository<PendingRegistration, Long> {
     Optional<PendingRegistration> findByToken(String token);
     Optional<PendingRegistration> findByEmail(String email);
+    Optional<PendingRegistration> findByClaimToken(String claimToken);
     void deleteByEmail(String email);
     void deleteByExpiresAtBefore(LocalDateTime cutoff);
 }

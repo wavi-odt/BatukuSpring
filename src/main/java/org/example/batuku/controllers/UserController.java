@@ -168,6 +168,29 @@ public class UserController {
     }
 
     /**
+     * POST /api/users/me/password
+     * Define uma palavra-passe pela primeira vez (utilizadores OAuth sem password).
+     */
+    @PostMapping("/me/password")
+    public ResponseEntity<?> setPassword(@RequestBody Map<String, String> body,
+                                         @AuthenticationPrincipal UserDetails userDetails) {
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        if (user.getPassword() != null) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Já tens uma palavra-passe definida. Usa a opção de alterar."));
+        }
+        String newPassword = body.getOrDefault("newPassword", "");
+        if (newPassword.length() < 8) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "A palavra-passe deve ter pelo menos 8 caracteres."));
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "Palavra-passe definida com sucesso."));
+    }
+
+    /**
      * PUT /api/users/me/password
      * Altera a palavra-passe do utilizador autenticado.
      */

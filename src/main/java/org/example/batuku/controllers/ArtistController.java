@@ -314,25 +314,37 @@ public class ArtistController {
         return ResponseEntity.ok(tracks);
     }
 
-    /** GET /api/artists/{id}/similar?limit=5: artistas com géneros em comum, por total de plays. */
+    /** GET /api/artists/{id}/similar?limit=5: artistas com géneros em comum, por total de plays.
+     *  Matching case-insensitive. Fallback: artistas mais ouvidos se não houver match de géneros. */
     @GetMapping("/{id}/similar")
     public ResponseEntity<List<SimilarArtistResponse>> getSimilar(
             @PathVariable Long id,
             @RequestParam(defaultValue = "5") int limit) {
 
         ArtistProfile target = artistProfileRepository.findById(id).orElseThrow();
-        List<String> targetGenres = target.getGenres() != null ? target.getGenres() : List.of();
-        if (targetGenres.isEmpty()) return ResponseEntity.ok(List.of());
+        List<String> targetGenresLower = target.getGenres() != null
+                ? target.getGenres().stream().map(String::toLowerCase).toList()
+                : List.of();
 
-        List<SimilarArtistResponse> result = artistProfileRepository.findAll().stream()
+        List<ArtistProfile> others = artistProfileRepository.findAll().stream()
                 .filter(a -> !a.getId().equals(id))
-                .filter(a -> a.getGenres() != null &&
-                             a.getGenres().stream().anyMatch(targetGenres::contains))
+                .toList();
+
+        // Tenta matching por género (case-insensitive)
+        List<ArtistProfile> matched = targetGenresLower.isEmpty() ? List.of() : others.stream()
+                .filter(a -> a.getGenres() != null && a.getGenres().stream()
+                        .anyMatch(g -> targetGenresLower.contains(g.toLowerCase())))
+                .toList();
+
+        // Fallback: artistas com mais plays se não houver match
+        List<ArtistProfile> candidates = matched.isEmpty() ? others : matched;
+
+        List<SimilarArtistResponse> result = candidates.stream()
                 .map(a -> {
                     String imageUrl = (a.isClaimed() && a.getUser() != null && a.getUser().getAvatarUrl() != null)
                             ? a.getUser().getAvatarUrl()
                             : a.getImageUrl();
-                    String genre = a.getGenres().get(0);
+                    String genre = (a.getGenres() != null && !a.getGenres().isEmpty()) ? a.getGenres().get(0) : null;
                     long totalPlays = playRepository.countTotalPlaysByArtist(a.getId());
                     return new SimilarArtistResponse(a.getId(), a.getName(), imageUrl, genre, totalPlays);
                 })

@@ -30,6 +30,11 @@ public class ArtistProfile {
     private List<String> genres;
 
     @ElementCollection
+    @CollectionTable(name = "artist_spotify_genres", joinColumns = @JoinColumn(name = "artist_profile_id"))
+    @Column(name = "genre")
+    private List<String> spotifyGenres;
+
+    @ElementCollection
     @CollectionTable(name = "artist_profile_languages", joinColumns = @JoinColumn(name = "artist_profile_id"))
     @Column(name = "language")
     private List<String> languages;
@@ -83,6 +88,9 @@ public class ArtistProfile {
 
     public List<String> getGenres() { return genres; }
     public void setGenres(List<String> genres) { this.genres = genres; }
+
+    public List<String> getSpotifyGenres() { return spotifyGenres; }
+    public void setSpotifyGenres(List<String> spotifyGenres) { this.spotifyGenres = spotifyGenres; }
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }

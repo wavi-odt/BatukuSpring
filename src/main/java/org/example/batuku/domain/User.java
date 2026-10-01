@@ -78,6 +78,10 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    // Tokens emitidos ANTES deste instante são considerados revogados (logout)
+    @Column(name = "token_valid_from")
+    private LocalDateTime tokenValidFrom;
+
     /**
      * Roles para o Spring Security.
      * FetchType.EAGER é necessário porque o Spring Security
@@ -146,4 +150,7 @@ public class User {
 
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles; }
+
+    public LocalDateTime getTokenValidFrom() { return tokenValidFrom; }
+    public void setTokenValidFrom(LocalDateTime tokenValidFrom) { this.tokenValidFrom = tokenValidFrom; }
 }

@@ -4,12 +4,14 @@ import org.example.batuku.config.TierProperties;
 import org.example.batuku.domain.ArtistFollow;
 import org.example.batuku.domain.ArtistProfile;
 import org.example.batuku.domain.Notification;
+import org.example.batuku.domain.PointTransaction;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.ArtistFollowResponse;
 import org.example.batuku.dto.FanResponse;
 import org.example.batuku.repository.ArtistFollowRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.FollowRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,17 +30,20 @@ public class ArtistFollowService {
     private final FollowRepository followRepository;
     private final TierProperties tierProperties;
     private final NotificationService notificationService;
+    private final GamificationService gamificationService;
 
     public ArtistFollowService(ArtistFollowRepository artistFollowRepository,
                                ArtistProfileRepository artistProfileRepository,
                                FollowRepository followRepository,
                                TierProperties tierProperties,
-                               NotificationService notificationService) {
+                               NotificationService notificationService,
+                               @Lazy GamificationService gamificationService) {
         this.artistFollowRepository = artistFollowRepository;
         this.artistProfileRepository = artistProfileRepository;
         this.followRepository = followRepository;
         this.tierProperties = tierProperties;
         this.notificationService = notificationService;
+        this.gamificationService = gamificationService;
     }
 
     @Transactional
@@ -69,6 +74,8 @@ public class ArtistFollowService {
             notificationService.notify(artistUser, Notification.NotificationType.FOLLOW, follower.getId(),
                     followerName + " começou a seguir-te");
         }
+
+        gamificationService.adicionarPontos(follower, PointTransaction.ActionType.FOLLOW, profile.getId());
 
         return artistFollowRepository.countByArtistProfileId(artistProfileId);
     }

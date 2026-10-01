@@ -12,6 +12,7 @@ public record ArtistImportResponse(
         String thumbnailUrl,
         String spotifyUrl,
         List<String> genres,
+        List<String> unmappedGenres,
         Integer popularity,
         Integer followerCount,
         boolean claimed,
@@ -19,7 +20,7 @@ public record ArtistImportResponse(
         int tracksUpdated,
         int tracksSkipped
 ) {
-    public static ArtistImportResponse from(ArtistProfile p, int tracksImported, int tracksUpdated, int tracksSkipped) {
+    public static ArtistImportResponse from(ArtistProfile p, int tracksImported, int tracksUpdated, int tracksSkipped, List<String> unmappedGenres) {
         return new ArtistImportResponse(
                 p.getId(),
                 p.getSpotifyArtistId(),
@@ -28,6 +29,7 @@ public record ArtistImportResponse(
                 p.getThumbnailUrl(),
                 p.getSpotifyUrl(),
                 p.getGenres(),
+                unmappedGenres != null ? unmappedGenres : List.of(),
                 p.getPopularity(),
                 p.getFollowerCount(),
                 p.isClaimed(),
