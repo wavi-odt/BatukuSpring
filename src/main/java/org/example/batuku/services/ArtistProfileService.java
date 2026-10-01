@@ -98,7 +98,7 @@ public class ArtistProfileService {
 
     public ImportResult findExisting(String spotifyArtistId) {
         return artistProfileRepository.findBySpotifyArtistId(spotifyArtistId)
-                .map(p -> new ImportResult(p, 0, 0, 0))
+                .map(p -> new ImportResult(p, 0, 0, 0, List.of()))
                 .orElseThrow();
     }
 

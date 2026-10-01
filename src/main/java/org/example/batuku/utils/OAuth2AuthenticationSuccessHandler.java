@@ -6,6 +6,8 @@ import org.example.batuku.domain.User;
 import org.example.batuku.repository.UserRepository;
 import org.example.batuku.services.RefreshTokenService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -65,14 +67,18 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         }
 
         var userDetails = jwtUserDetailsService.loadUserByUsername(user.getEmail());
-        String token        = jwtTokenUtil.generateToken(userDetails);
-        String refreshToken = refreshTokenService.issue(user);
+        String token           = jwtTokenUtil.generateToken(userDetails);
+        String refreshTokenRaw = refreshTokenService.issue(user);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshTokenRaw)
+                .httpOnly(true).secure(true).sameSite("None")
+                .path("/api/auth").maxAge(7 * 24 * 60 * 60L).build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         boolean isNewUser = user.getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(30));
 
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("token", token)
-                .queryParam("refreshToken", refreshToken)
                 .queryParam("new", isNewUser)
                 .build().toUriString();
 

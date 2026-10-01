@@ -1,5 +1,6 @@
 package org.example.batuku.controllers;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.example.batuku.domain.User;
 import org.example.batuku.repository.UserRepository;
 import org.example.batuku.services.RefreshTokenService;
@@ -8,7 +9,9 @@ import org.example.batuku.utils.JwtResponse;
 import org.example.batuku.utils.JwtTokenUtil;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 
@@ -40,7 +43,8 @@ public class JwtAuthenticationController {
     private RefreshTokenService refreshTokenService;
 
     @PostMapping("/authenticate")
-    public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest) {
+    public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest,
+                                                        HttpServletResponse response) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -58,8 +62,16 @@ public class JwtAuthenticationController {
 
         User user = userRepository.findByEmail(authenticationRequest.getUsername())
                 .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
-        String refreshToken = refreshTokenService.issue(user);
+        String refreshTokenRaw = refreshTokenService.issue(user);
 
-        return ResponseEntity.ok(new JwtResponse(token, refreshToken));
+        response.addHeader(HttpHeaders.SET_COOKIE, buildRefreshCookie(refreshTokenRaw).toString());
+
+        return ResponseEntity.ok(new JwtResponse(token));
+    }
+
+    private static ResponseCookie buildRefreshCookie(String value) {
+        return ResponseCookie.from("refreshToken", value)
+                .httpOnly(true).secure(true).sameSite("None")
+                .path("/api/auth").maxAge(7 * 24 * 60 * 60L).build();
     }
 }
