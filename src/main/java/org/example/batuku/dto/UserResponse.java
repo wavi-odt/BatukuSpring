@@ -27,6 +27,7 @@ public class UserResponse {
     private String location;
     private String marketplaceRole;
     private boolean hasPassword;
+    private boolean verified;
 
     // Construtor privado, obriga a usar o método estático
     private UserResponse() {}
@@ -36,13 +37,17 @@ public class UserResponse {
     }
 
     public static UserResponse from(User user, Long artistProfileId, String spotifyArtistId) {
+        return from(user, artistProfileId, spotifyArtistId, null);
+    }
+
+    public static UserResponse from(User user, Long artistProfileId, String spotifyArtistId, String artistImageUrl) {
         UserResponse r = new UserResponse();
         r.id              = user.getId();
         r.email           = user.getEmail();
         r.username        = user.getUsername();
         r.name            = user.getName();
         r.userRole        = user.getUserRole().name();
-        r.avatarUrl       = user.getAvatarUrl();
+        r.avatarUrl       = user.getAvatarUrl() != null ? user.getAvatarUrl() : artistImageUrl;
         r.country         = user.getCountry();
         r.createdAt       = user.getCreatedAt();
         r.artistProfileId  = artistProfileId;
@@ -50,7 +55,8 @@ public class UserResponse {
         r.bio              = user.getBio();
         r.location         = user.getLocation();
         r.marketplaceRole  = user.getMarketplaceRole();
-        r.hasPassword      = user.getPassword() != null;
+        r.hasPassword      = user.getPassword() != null && !user.getPassword().startsWith("{OAUTH}");
+        r.verified         = user.isVerified();
         return r;
     }
 
@@ -69,5 +75,6 @@ public class UserResponse {
     public String getBio() { return bio; }
     public String getLocation() { return location; }
     public String getMarketplaceRole() { return marketplaceRole; }
-    public boolean isHasPassword()     { return hasPassword; }
+    public boolean isHasPassword() { return hasPassword; }
+    public boolean isVerified()    { return verified; }
 }

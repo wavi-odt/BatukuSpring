@@ -8,4 +8,5 @@ import java.util.List;
 public interface PendingArtistClaimRepository extends JpaRepository<PendingArtistClaim, Long> {
     List<PendingArtistClaim> findByStatusOrderByCreatedAtAsc(PendingArtistClaim.ClaimStatus status);
     boolean existsByEmailAndStatus(String email, PendingArtistClaim.ClaimStatus status);
+    long countByStatus(PendingArtistClaim.ClaimStatus status);
 }

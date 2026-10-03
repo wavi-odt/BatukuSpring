@@ -17,6 +17,6 @@ public record StatsResponse(
     public record DayCount(String day, long plays) {}
     public record DayLike(String day, long likes) {}
     public record DayFollower(String day, long followers) {}
-    public record TrackStat(Long id, String title, String coverUrl, long plays, long likes) {}
+    public record TrackStat(Long id, String title, String coverUrl, String audioUrl, long plays, long likes) {}
     public record BreakdownItem(String label, long value, String color) {}
 }

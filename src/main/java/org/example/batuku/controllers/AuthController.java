@@ -207,9 +207,10 @@ public class AuthController {
         return userRepository.findByEmail(email)
                 .map(user -> {
                     var profile = artistProfileRepository.findByUserId(user.getId());
-                    Long artistProfileId  = profile.map(p -> p.getId()).orElse(null);
+                    Long artistProfileId   = profile.map(p -> p.getId()).orElse(null);
                     String spotifyArtistId = profile.map(p -> p.getSpotifyArtistId()).orElse(null);
-                    return ResponseEntity.ok(UserResponse.from(user, artistProfileId, spotifyArtistId));
+                    String artistImageUrl  = profile.map(p -> p.getImageUrl()).orElse(null);
+                    return ResponseEntity.ok(UserResponse.from(user, artistProfileId, spotifyArtistId, artistImageUrl));
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }

@@ -60,7 +60,7 @@ public class JwtAuthenticationController {
         final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
         final String token = jwtTokenUtil.generateToken(userDetails);
 
-        User user = userRepository.findByEmail(authenticationRequest.getUsername())
+        User user = userRepository.findByEmailOrUsername(authenticationRequest.getUsername())
                 .orElseThrow(() -> new RuntimeException("Utilizador não encontrado"));
         String refreshTokenRaw = refreshTokenService.issue(user);
 

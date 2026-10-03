@@ -108,7 +108,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setUsername(generateUsername(userInfo));
         user.setName(userInfo.getName() != null ? userInfo.getName() : userInfo.getEmail().split("@")[0]);
         user.setAvatarUrl(userInfo.getAvatarUrl());
-        user.setPassword(UUID.randomUUID().toString());
+        user.setPassword("{OAUTH}" + UUID.randomUUID());
         user.setUserRole(User.UserRole.FAN);
         user.setRoles(new HashSet<>(Set.of(fanRole)));
         user.setEnabled(true);

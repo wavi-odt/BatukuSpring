@@ -22,10 +22,10 @@ public interface PlayRepository extends JpaRepository<Play, Long> {
                    "GROUP BY DATE(p.played_at) ORDER BY DATE(p.played_at)", nativeQuery = true)
     List<Object[]> findDailyPlaysByArtist(@Param("artistId") Long artistId, @Param("since") LocalDateTime since);
 
-    @Query(value = "SELECT t.id, t.title, t.cover_url, COUNT(p.id) " +
+    @Query(value = "SELECT t.id, t.title, t.cover_url, t.audio_url, COUNT(p.id) " +
                    "FROM plays p INNER JOIN tracks t ON p.track_id = t.id " +
                    "WHERE t.artist_profile_id = :artistId AND p.played_at >= :since " +
-                   "GROUP BY t.id, t.title, t.cover_url ORDER BY COUNT(p.id) DESC LIMIT 5", nativeQuery = true)
+                   "GROUP BY t.id, t.title, t.cover_url, t.audio_url ORDER BY COUNT(p.id) DESC LIMIT 5", nativeQuery = true)
     List<Object[]> findTopTracksByArtist(@Param("artistId") Long artistId, @Param("since") LocalDateTime since);
 
     @Query(value = "SELECT COALESCE(p.referrer_url, 'direct'), COUNT(*) FROM plays p " +
@@ -73,6 +73,11 @@ public interface PlayRepository extends JpaRepository<Play, Long> {
            nativeQuery = true)
     long sumTotalDurationByUser(@Param("userId") Long userId);
 
+    @Query(value = "SELECT COUNT(DISTINCT DATE(p.played_at)) FROM plays p " +
+                   "WHERE p.user_id = :userId AND HOUR(p.played_at) < :maxHour",
+           nativeQuery = true)
+    long countDistinctEarlyMorningDays(@Param("userId") Long userId, @Param("maxHour") int maxHour);
+
     /* ─────────────────────────────────────────────────────────────── */
 
     @Query(value = "SELECT p.country, COUNT(*) FROM plays p " +
@@ -101,12 +106,12 @@ public interface PlayRepository extends JpaRepository<Play, Long> {
            nativeQuery = true)
     long countTotalPlaysByArtist(@Param("artistId") Long artistId);
 
-    @Query(value = "SELECT p.track_id, t.title, t.cover_url, ap.name, ap.id, t.audio_url, t.source, t.spotify_url, MAX(p.played_at) AS last_played " +
+    @Query(value = "SELECT p.track_id, t.title, t.cover_url, ap.name, ap.id, t.audio_url, t.source, t.spotify_track_id, MAX(p.played_at) AS last_played " +
                    "FROM plays p " +
                    "INNER JOIN tracks t ON p.track_id = t.id " +
                    "INNER JOIN artist_profiles ap ON t.artist_profile_id = ap.id " +
                    "WHERE p.user_id = :userId " +
-                   "GROUP BY p.track_id, t.title, t.cover_url, ap.name, ap.id, t.audio_url, t.source, t.spotify_url " +
+                   "GROUP BY p.track_id, t.title, t.cover_url, ap.name, ap.id, t.audio_url, t.source, t.spotify_track_id " +
                    "ORDER BY last_played DESC LIMIT 10", nativeQuery = true)
     List<Object[]> findRecentlyPlayedByUser(@Param("userId") Long userId);
 }

@@ -23,12 +23,12 @@ public class GroqClient {
     private final RestClient restClient;
 
     public GroqClient(@Value("${groq.api.key:}") String apiKey,
-                      @Value("${groq.api.model:llama-3.3-70b-versatile}") String model) {
+                      @Value("${groq.api.model:llama3-70b-8192}") String model) {
         this.apiKey = apiKey;
         this.model  = model;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(5));
+        factory.setConnectTimeout(Duration.ofSeconds(10));
+        factory.setReadTimeout(Duration.ofSeconds(20));
         this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
@@ -41,7 +41,7 @@ public class GroqClient {
             Map<String, Object> body = Map.of(
                 "model",      model,
                 "temperature", 0.6,
-                "max_tokens",  150,
+                "max_tokens",  300,
                 "messages", List.of(
                     Map.of("role", "system", "content", systemPrompt),
                     Map.of("role", "user",   "content", userPrompt)

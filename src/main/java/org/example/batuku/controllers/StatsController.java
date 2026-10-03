@@ -10,6 +10,7 @@ import org.example.batuku.dto.StatsResponse;
 import org.example.batuku.repository.*;
 import org.example.batuku.services.ForecastService;
 import org.example.batuku.services.GamificationService;
+import org.example.batuku.services.GroqClient;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,6 +36,7 @@ public class StatsController {
     private final JwtUserDetailsService   jwtUserDetailsService;
     private final GamificationService     gamificationService;
     private final ForecastService         forecastService;
+    private final GroqClient              groqClient;
 
     public StatsController(ArtistProfileRepository artistProfileRepository,
                            PlayRepository playRepository,
@@ -44,7 +46,8 @@ public class StatsController {
                            CommentRepository commentRepository,
                            JwtUserDetailsService jwtUserDetailsService,
                            GamificationService gamificationService,
-                           ForecastService forecastService) {
+                           ForecastService forecastService,
+                           GroqClient groqClient) {
         this.artistProfileRepository = artistProfileRepository;
         this.playRepository          = playRepository;
         this.likeRepository          = likeRepository;
@@ -54,6 +57,7 @@ public class StatsController {
         this.jwtUserDetailsService   = jwtUserDetailsService;
         this.gamificationService     = gamificationService;
         this.forecastService         = forecastService;
+        this.groqClient              = groqClient;
     }
 
     /** GET /api/stats/me?period=7d|30d|90d */
@@ -151,16 +155,17 @@ public class StatsController {
             Long   trackId    = ((Number) row[0]).longValue();
             String title      = (String) row[1];
             String coverUrl   = (String) row[2];
-            long   trackPlays = ((Number) row[3]).longValue();
+            String audioUrl   = (String) row[3];
+            long   trackPlays = ((Number) row[4]).longValue();
             long   trackLikes = likeRepository.countByTrackId(trackId);
-            topTracks.add(new StatsResponse.TrackStat(trackId, title, coverUrl, trackPlays, trackLikes));
+            topTracks.add(new StatsResponse.TrackStat(trackId, title, coverUrl, audioUrl, trackPlays, trackLikes));
         }
 
         // Fallback: se não há plays ainda, mostra todas as faixas com contagem total
         if (topTracks.isEmpty()) {
             trackRepository.findByArtistProfileId(artistId).stream().limit(5).forEach(t ->
                     topTracks.add(new StatsResponse.TrackStat(
-                            t.getId(), t.getTitle(), t.getCoverUrl(),
+                            t.getId(), t.getTitle(), t.getCoverUrl(), t.getAudioUrl(),
                             playRepository.countByTrackId(t.getId()),
                             likeRepository.countByTrackId(t.getId())
                     ))
@@ -195,27 +200,96 @@ public class StatsController {
         return ResponseEntity.ok(new StatsResponse(kpis, dailyPlays, dailyLikes, dailyFollowers, topTracks, sources, locations, completionRate));
     }
 
+    /** GET /api/stats/weekly-summary — resumo semanal gerado por IA */
+    @GetMapping("/api/stats/weekly-summary")
+    @PreAuthorize("hasRole('ARTIST')")
+    public ResponseEntity<Map<String, String>> getWeeklySummary(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+        if (artistProfileRepository.findByUserId(user.getId()).isEmpty())
+            return ResponseEntity.noContent().build();
+
+        ArtistProfile profile = artistProfileRepository.findByUserId(user.getId()).get();
+        Long artistId = profile.getId();
+
+        LocalDateTime now      = LocalDateTime.now();
+        LocalDateTime since7   = now.minusDays(7);
+        LocalDateTime since14  = now.minusDays(14);
+
+        long plays     = playRepository.countByTrackArtistProfileIdAndPlayedAtAfter(artistId, since7);
+        long prevPlays = playRepository.countByTrackArtistProfileIdAndPlayedAtBetween(artistId, since14, since7);
+        long likes     = likeRepository.countByTrackArtistProfileIdAndCreatedAtAfter(artistId, since7);
+        long newFollowers = artistFollowRepository.countByArtistProfileIdAndCreatedAtAfter(artistId, since7);
+        long comments  = commentRepository.countByArtistProfileAndCreatedAtAfter(artistId, since7);
+
+        List<Object[]> rawTop = playRepository.findTopTracksByArtist(artistId, since7);
+        String topTrack = rawTop.isEmpty() ? null : (String) rawTop.get(0)[1];
+        long   topPlays = rawTop.isEmpty() ? 0    : ((Number) rawTop.get(0)[4]).longValue();
+
+        double playDelta = prevPlays > 0 ? ((double)(plays - prevPlays) / prevPlays) * 100.0 : 0;
+        String trend = playDelta > 5 ? "subiu" : playDelta < -5 ? "desceu" : "manteve-se estável";
+
+        String artistName = profile.getName() != null ? profile.getName() : "Artista";
+
+        String systemPrompt = "És um assistente de dados para artistas musicais da plataforma Batuku. "
+                + "Escreve um resumo semanal em português europeu, com 2 a 3 frases diretas e motivadoras. "
+                + "Usa os dados fornecidos, não inventes valores. Sem markdown, sem listas, sem títulos.";
+
+        String userPrompt = String.format(
+                "Artista: %s. Esta semana: %d reproduções (%s %.0f%% face à semana anterior), "
+                + "%d likes, %d novos seguidores, %d comentários. "
+                + "%s"
+                + "Escreve o resumo semanal.",
+                artistName, plays, trend, Math.abs(playDelta),
+                likes, newFollowers, comments,
+                topTrack != null ? String.format("A faixa mais ouvida foi \"%s\" com %d reproduções. ", topTrack, topPlays) : "");
+
+        String summary = groqClient.generateInsight(systemPrompt, userPrompt);
+
+        if (summary == null) {
+            if (plays == 0) {
+                summary = "Esta semana ainda não tens reproduções registadas. Partilha as tuas faixas para começar a crescer!";
+            } else {
+                summary = String.format(
+                        "Esta semana tiveste %d reproduções e %d novo%s seguidor%s. "
+                        + (topTrack != null ? "A tua faixa mais ouvida foi \"%s\". " : "")
+                        + "Continua a publicar para manter o crescimento.",
+                        plays, newFollowers, newFollowers == 1 ? "" : "s", newFollowers == 1 ? "" : "s",
+                        topTrack != null ? topTrack : "");
+            }
+        }
+
+        return ResponseEntity.ok(Map.of("summary", summary));
+    }
+
     private static String contextLabel(String ctx) {
         return switch (ctx) {
-            case "playlist" -> "Playlists";
-            case "artist"   -> "Perfil artista";
-            case "library"  -> "Biblioteca";
-            case "home"     -> "Início";
-            case "discover" -> "Descobrir";
-            case "release"  -> "Lançamento";
-            case "direct"   -> "Direto";
-            default         -> ctx;
+            case "playlist"     -> "Playlists";
+            case "artist"       -> "Perfil artista";
+            case "library"      -> "Biblioteca";
+            case "home"         -> "Início";
+            case "discover"     -> "Descobrir";
+            case "release"      -> "Lançamento";
+            case "direct"       -> "Direto";
+            case "following"    -> "A seguir";
+            case "fan",
+                 "user-profile" -> "Perfis";
+            default             -> ctx;
         };
     }
 
     private static String contextColor(String ctx) {
         return switch (ctx) {
-            case "playlist" -> "coral";
-            case "artist"   -> "mustard";
-            case "library"  -> "green";
-            case "home"     -> "purple";
-            case "discover" -> "ocean";
-            default         -> "default";
+            case "playlist"     -> "coral";
+            case "artist"       -> "mustard";
+            case "library"      -> "green";
+            case "home"         -> "purple";
+            case "discover"     -> "ocean";
+            case "following"    -> "purple";
+            case "fan",
+                 "user-profile" -> "mute";
+            default             -> "default";
         };
     }
 

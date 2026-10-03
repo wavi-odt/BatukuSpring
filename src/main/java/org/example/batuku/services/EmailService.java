@@ -102,7 +102,7 @@ public class EmailService {
     }
 
     public void sendWelcomeEmail(User user) {
-        boolean isOAuth   = user.getPassword() == null;
+        boolean isOAuth   = user.getPassword() == null || user.getPassword().startsWith("{OAUTH}");
         String redirectTo = isOAuth ? "/settings" : "/home";
         String magicToken = loginTokenService.generate(user, redirectTo);
         Context ctx = new Context();

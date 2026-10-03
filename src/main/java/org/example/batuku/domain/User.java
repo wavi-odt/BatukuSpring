@@ -67,6 +67,10 @@ public class User {
     @Column(name = "challenge_set_offset", nullable = false)
     private int challengeSetOffset = 0;
 
+    // Utilizador verificado pelo admin (badge visível no perfil)
+    @Column(nullable = false)
+    private boolean verified = false;
+
     // Conta ativa? Podemos desativar sem apagar
     @Column(nullable = false)
     private boolean enabled = true;
@@ -139,6 +143,9 @@ public class User {
 
     public int getChallengeSetOffset() { return challengeSetOffset; }
     public void setChallengeSetOffset(int challengeSetOffset) { this.challengeSetOffset = challengeSetOffset; }
+
+    public boolean isVerified() { return verified; }
+    public void setVerified(boolean verified) { this.verified = verified; }
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

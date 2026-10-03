@@ -53,6 +53,7 @@ public class GamificationService {
     private final PlaylistRepository           playlistRepository;
     private final NotificationService          notificationService;
     private final UserChallengeRewardRepository challengeRewardRepository;
+    private final org.example.batuku.repository.PlaylistLikeRepository playlistLikeRepository;
 
     public GamificationService(UserPointsRepository userPointsRepository,
                                PointTransactionRepository transactionRepository,
@@ -65,7 +66,8 @@ public class GamificationService {
                                ArtistFollowRepository artistFollowRepository,
                                PlaylistRepository playlistRepository,
                                NotificationService notificationService,
-                               UserChallengeRewardRepository challengeRewardRepository) {
+                               UserChallengeRewardRepository challengeRewardRepository,
+                               org.example.batuku.repository.PlaylistLikeRepository playlistLikeRepository) {
         this.userPointsRepository    = userPointsRepository;
         this.transactionRepository   = transactionRepository;
         this.badgeRepository         = badgeRepository;
@@ -78,6 +80,7 @@ public class GamificationService {
         this.playlistRepository      = playlistRepository;
         this.notificationService     = notificationService;
         this.challengeRewardRepository = challengeRewardRepository;
+        this.playlistLikeRepository  = playlistLikeRepository;
     }
 
     /* ── Inicialização ────────────────────────────────────────────── */
@@ -143,6 +146,9 @@ public class GamificationService {
         }
 
         verificarBadges(user, up);
+        if (actionType != PointTransaction.ActionType.MISSION_COMPLETE) {
+            verificarDesafios(user);
+        }
     }
 
     /* ── Perfil de gamificação ────────────────────────────────────── */
@@ -176,6 +182,43 @@ public class GamificationService {
             dto.setEarnedAt(ub.getEarnedAt());
             return dto;
         }).toList());
+
+        // Progress labels para badges ainda não ganhos
+        Set<Long> earnedIds = userBadges.stream().map(ub -> ub.getBadge().getId())
+                .collect(java.util.stream.Collectors.toSet());
+        List<Badge> porGanhar = badgeRepository.findAll().stream()
+                .filter(b -> !earnedIds.contains(b.getId())).toList();
+
+        if (!porGanhar.isEmpty()) {
+            List<java.sql.Date> dates = playRepository.findDistinctPlayDatesSince(userId, LocalDateTime.now().minusDays(35));
+            int  streak        = calcularStreak(dates);
+            long earlyDays     = playRepository.countDistinctEarlyMorningDays(userId, 7);
+            long artists       = playRepository.countDistinctArtistsByUser(userId);
+            long follows       = artistFollowRepository.countByFollowerId(userId);
+            long playlists     = playlistRepository.countByUserIdAndIsSystemGeneratedFalse(userId);
+            long hoursOuvidas     = playRepository.sumTotalDurationByUser(userId) / 3_600_000;
+            long maxPlaylistLikes = playlistLikeRepository.maxLikesByUserPlaylists(userId);
+            int  level            = up.getLevel();
+
+            java.util.Map<Long, String> labels = new java.util.HashMap<>();
+            for (Badge badge : porGanhar) {
+                String label = switch (badge.getName()) {
+                    case "Madrugador"    -> earlyDays       + " / 10 dias";
+                    case "Streak 12"     -> streak          + " / 12 dias";
+                    case "Explorador"    -> artists         + " / 50 artistas";
+                    case "Apoiante"      -> follows         + " / 20 artistas";
+                    case "Curador"       -> maxPlaylistLikes + " / 100 likes";
+                    case "Top 100"       -> rank > 0 ? "Rank #" + rank : "Sem rank ainda";
+                    case "Fã Dedicado"   -> hoursOuvidas    + "h / 100h";
+                    case "Streak 30"     -> streak          + " / 30 dias";
+                    case "Influenciador" -> maxPlaylistLikes + " / 1000 likes";
+                    case "Lenda"         -> "Nível " + level + " / 10";
+                    default -> null;
+                };
+                if (label != null) labels.put(badge.getId(), label);
+            }
+            resp.setBadgeProgressLabels(labels);
+        }
 
         return resp;
     }
@@ -275,6 +318,8 @@ public class GamificationService {
                 challengeRewardRepository.save(new UserChallengeReward(user, ch.getId(), setOffset));
                 jaRecompensados.add(ch.getId());
                 houveConclusaoNova = true;
+                notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
+                        "Desafio \"" + ch.getTitle() + "\" concluído! +" + ch.getXp() + " pts 🎯");
                 log.info("Challenge '{}' (set {}) rewarded: +{} pts to user {}", ch.getId(), setOffset, ch.getXp(), user.getId());
             }
         }
@@ -379,10 +424,54 @@ public class GamificationService {
 
     /* ── Lógica interna ──────────────────────────────────────────── */
 
+    @Transactional
+    public void checkBadgesForUser(User user) {
+        userPointsRepository.findByUserId(user.getId())
+                .ifPresent(up -> verificarBadges(user, up));
+    }
+
+    private void verificarDesafios(User user) {
+        int setOffset = user.getChallengeSetOffset();
+        List<ChallengeResponse> desafios = construirSet(user.getId(), setOffset % TOTAL_SETS);
+        autoRewardCompleted(user, desafios, setOffset);
+    }
+
     private void verificarBadges(User user, UserPoints up) {
-        List<Badge> elegíveis = badgeRepository.findByPointsRequiredLessThanEqual(up.getTotalPoints());
-        for (Badge badge : elegíveis) {
-            if (!userBadgeRepository.existsByUserIdAndBadgeId(user.getId(), badge.getId())) {
+        List<Badge> todos = badgeRepository.findAll();
+        Set<Long> jaGanhos = userBadgeRepository.findByUserId(user.getId())
+                .stream().map(ub -> ub.getBadge().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<Badge> porGanhar = todos.stream().filter(b -> !jaGanhos.contains(b.getId())).toList();
+        if (porGanhar.isEmpty()) return;
+
+        Long uid = user.getId();
+        List<java.sql.Date> dates = playRepository.findDistinctPlayDatesSince(uid, LocalDateTime.now().minusDays(35));
+        int  streak        = calcularStreak(dates);
+        long earlyDays     = playRepository.countDistinctEarlyMorningDays(uid, 7);
+        long artists       = playRepository.countDistinctArtistsByUser(uid);
+        long follows       = artistFollowRepository.countByFollowerId(uid);
+        long playlists     = playlistRepository.countByUserIdAndIsSystemGeneratedFalse(uid);
+        long rank          = userPointsRepository.findRankByUserId(uid);
+        long hoursOuvidas      = playRepository.sumTotalDurationByUser(uid) / 3_600_000;
+        long maxPlaylistLikes  = playlistLikeRepository.maxLikesByUserPlaylists(uid);
+        int  level             = up.getLevel();
+
+        for (Badge badge : porGanhar) {
+            boolean earned = switch (badge.getName()) {
+                case "Madrugador"    -> earlyDays       >= 10;
+                case "Streak 12"     -> streak          >= 12;
+                case "Explorador"    -> artists         >= 50;
+                case "Apoiante"      -> follows         >= 20;
+                case "Curador"       -> maxPlaylistLikes >= 100;
+                case "Top 100"       -> rank > 0 && rank <= 100;
+                case "Fã Dedicado"   -> hoursOuvidas    >= 100;
+                case "Streak 30"     -> streak          >= 30;
+                case "Influenciador" -> maxPlaylistLikes >= 1000;
+                case "Lenda"         -> level           >= 10;
+                default -> false;
+            };
+            if (earned) {
                 UserBadge ub = new UserBadge();
                 ub.setUser(user);
                 ub.setBadge(badge);

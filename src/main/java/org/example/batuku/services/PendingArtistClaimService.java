@@ -193,6 +193,7 @@ public class PendingArtistClaimService {
         user.setUserRole(User.UserRole.ARTIST);
         user.setRoles(new HashSet<>(Set.of(artistRole)));
         user.setEnabled(true);
+        user.setVerified(true);
         User savedUser = userRepository.save(user);
 
         if (claim.getProvider() != null) {

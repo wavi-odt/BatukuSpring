@@ -175,7 +175,7 @@ public class UserController {
     public ResponseEntity<?> setPassword(@RequestBody Map<String, String> body,
                                          @AuthenticationPrincipal UserDetails userDetails) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-        if (user.getPassword() != null) {
+        if (user.getPassword() != null && !user.getPassword().startsWith("{OAUTH}")) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "Já tens uma palavra-passe definida. Usa a opção de alterar."));
         }
@@ -199,7 +199,8 @@ public class UserController {
                                             @AuthenticationPrincipal UserDetails userDetails) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
 
-        if (user.getPassword() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+        if (user.getPassword() == null || user.getPassword().startsWith("{OAUTH}") ||
+                !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "Palavra-passe atual incorreta."));
         }
@@ -253,7 +254,7 @@ public class UserController {
             item.put("artistId",   ((Number) row[4]).longValue());
             item.put("audioUrl",   row[5]);
             item.put("source",     row[6]);
-            item.put("spotifyUrl", row[7]);
+            item.put("spotifyId",  row[7]);
             result.add(item);
         }
         return ResponseEntity.ok(result);
@@ -298,7 +299,7 @@ public class UserController {
             item.put("artistId",   ((Number) row[4]).longValue());
             item.put("audioUrl",   row[5]);
             item.put("source",     row[6]);
-            item.put("spotifyUrl", row[7]);
+            item.put("spotifyId",  row[7]);
             result.add(item);
         }
         return ResponseEntity.ok(result);

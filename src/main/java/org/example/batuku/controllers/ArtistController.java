@@ -126,6 +126,8 @@ public class ArtistController {
 
         Long userId = (profile.isClaimed() && profile.getUser() != null)
                 ? profile.getUser().getId() : null;
+        String username = (profile.isClaimed() && profile.getUser() != null)
+                ? profile.getUser().getUsername() : null;
 
         return new ArtistDetailResponse(
                 profile.getId(),
@@ -141,7 +143,9 @@ public class ArtistController {
                 genres,
                 profile.getLanguages() != null ? profile.getLanguages() : List.of(),
                 linkItems,
-                userId
+                userId,
+                username,
+                profile.isClaimed()
         );
     }
 

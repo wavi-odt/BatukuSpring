@@ -26,6 +26,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findTop5ByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(String name, String username);
 
+    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u WHERE LOWER(u.name) LIKE LOWER(CONCAT('%',:q,'%')) OR LOWER(u.username) LIKE LOWER(CONCAT('%',:q,'%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%',:q,'%')) ORDER BY u.createdAt DESC")
+    List<User> searchUsers(@org.springframework.data.repository.query.Param("q") String q, org.springframework.data.domain.Pageable pageable);
+
+    List<User> findTop50ByOrderByCreatedAtDesc();
+
     long countByUserRole(User.UserRole userRole);
     long countByUserRoleNot(User.UserRole userRole);
 

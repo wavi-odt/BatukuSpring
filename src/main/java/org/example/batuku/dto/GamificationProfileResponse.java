@@ -11,6 +11,7 @@ public class GamificationProfileResponse {
     private int    pointsToNextLevel;
     private long   rank;
     private List<BadgeDto> badges;
+    private java.util.Map<Long, String> badgeProgressLabels = new java.util.HashMap<>();
 
     public static class BadgeDto {
         private Long          id;
@@ -42,10 +43,13 @@ public class GamificationProfileResponse {
     public long             getRank()             { return rank;             }
     public List<BadgeDto>   getBadges()           { return badges;           }
 
-    public void setTotalPoints(int totalPoints)           { this.totalPoints = totalPoints;           }
-    public void setLevel(int level)                       { this.level = level;                       }
-    public void setExperiencePoints(int xp)               { this.experiencePoints = xp;               }
-    public void setPointsToNextLevel(int p)               { this.pointsToNextLevel = p;               }
-    public void setRank(long rank)                        { this.rank = rank;                         }
-    public void setBadges(List<BadgeDto> badges)          { this.badges = badges;                     }
+    public java.util.Map<Long, String> getBadgeProgressLabels() { return badgeProgressLabels; }
+
+    public void setTotalPoints(int totalPoints)                                        { this.totalPoints = totalPoints;               }
+    public void setLevel(int level)                                                    { this.level = level;                           }
+    public void setExperiencePoints(int xp)                                            { this.experiencePoints = xp;                   }
+    public void setPointsToNextLevel(int p)                                            { this.pointsToNextLevel = p;                   }
+    public void setRank(long rank)                                                     { this.rank = rank;                             }
+    public void setBadges(List<BadgeDto> badges)                                       { this.badges = badges;                         }
+    public void setBadgeProgressLabels(java.util.Map<Long, String> m)                 { this.badgeProgressLabels = m;                 }
 }

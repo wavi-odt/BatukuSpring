@@ -16,7 +16,9 @@ public record ArtistDetailResponse(
         List<String> genres,
         List<String> languages,
         List<LinkItem> links,
-        Long userId
+        Long userId,
+        String username,
+        boolean verified
 ) {
     public record TrackItem(Long id, String title, String imageUrl, long plays, String duration) {}
     public record LinkItem(String kind, String handle) {}
