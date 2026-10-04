@@ -39,21 +39,50 @@
                 O teu perfil de artista <strong style="color:#FFFFFF;" th:text="${artistName}">Djossa</strong>
                 foi verificado e aprovado pela equipa Batuku.
               </p>
-              <p style="margin:0 0 32px;font-size:15px;color:#A0A0A6;line-height:1.6;">
-                Já podes iniciar sessão, publicar música, acompanhar as tuas estatísticas
-                e conectar com os teus fãs em Cabo Verde e na diáspora.
-              </p>
+              <!-- Versão utilizador normal -->
+              <div th:unless="${isOAuth}">
+                <p style="margin:0 0 32px;font-size:15px;color:#A0A0A6;line-height:1.6;">
+                  Já podes iniciar sessão, publicar música, acompanhar as tuas estatísticas
+                  e conectar com os teus fãs em Cabo Verde e na diáspora.
+                </p>
+                <table align="center" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+                  <tr>
+                    <td style="background:#E85D3C;border-radius:10px;">
+                      <a th:href="${magicLink}"
+                         style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.2px;">
+                        Ir para o dashboard
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </div>
 
-              <table align="center" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
-                <tr>
-                  <td style="background:#E85D3C;border-radius:10px;">
-                    <a th:href="${magicLink}"
-                       style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.2px;">
-                      Ir para o dashboard
-                    </a>
-                  </td>
-                </tr>
-              </table>
+              <!-- Versão utilizador OAuth (sem password) -->
+              <div th:if="${isOAuth}">
+                <p style="margin:0 0 16px;font-size:15px;color:#A0A0A6;line-height:1.6;">
+                  Entraste com Google ou Discord, por isso não precisas de palavra-passe para iniciar sessão.
+                </p>
+                <p style="margin:0 0 16px;font-size:15px;color:#A0A0A6;line-height:1.6;">
+                  Se quiseres também poder entrar com email e palavra-passe, define-a agora
+                  nas tuas definições. É rápido e podes fazê-lo diretamente a seguir.
+                </p>
+                <p style="margin:0 0 32px;font-size:15px;color:#A0A0A6;line-height:1.6;">
+                  Depois publica música, acompanha as estatísticas e conecta com os teus fãs!
+                </p>
+                <table align="center" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+                  <tr>
+                    <td style="background:#E85D3C;border-radius:10px;">
+                      <a th:href="${magicLink}"
+                         style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.2px;">
+                        Definir palavra-passe
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:16px 0 24px;font-size:12px;color:#4A4A4F;text-align:center;line-height:1.5;">
+                  Podes ignorar este passo e entrar sempre com Google ou Discord. O botão acima leva-te diretamente às definições, já autenticado.
+                </p>
+              </div>
 
             </td>
           </tr>

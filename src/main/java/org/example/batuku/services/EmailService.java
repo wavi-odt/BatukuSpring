@@ -132,11 +132,14 @@ public class EmailService {
     }
 
     public void sendClaimVerifiedEmail(User user, ArtistProfile profile) {
-        String magicToken = loginTokenService.generate(user, "/dashboard");
+        boolean isOAuth   = user.getPassword() == null || user.getPassword().startsWith("{OAUTH}");
+        String redirectTo = isOAuth ? "/settings" : "/dashboard";
+        String magicToken = loginTokenService.generate(user, redirectTo);
         Context ctx = new Context();
         ctx.setVariable("name", user.getName());
         ctx.setVariable("artistName", profile.getName());
         ctx.setVariable("magicLink", appBaseUrl + "/auto-login?token=" + magicToken);
+        ctx.setVariable("isOAuth", isOAuth);
         send(user.getEmail(), "Perfil verificado, já podes publicar música!", "claim-verified", ctx);
     }
 

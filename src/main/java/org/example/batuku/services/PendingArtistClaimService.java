@@ -84,7 +84,7 @@ public class PendingArtistClaimService {
         pending.setToken(UUID.randomUUID().toString());
         pending.setEmail(email);
         pending.setUsername(user.getUsername());
-        pending.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        pending.setPassword("{OAUTH}" + UUID.randomUUID());
         pending.setName(user.getName());
         pending.setCountry(user.getCountry());
         pending.setLocation(user.getLocation());
