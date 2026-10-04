@@ -33,13 +33,15 @@ public class LogoutController {
     }
 
     @PostMapping("/logout")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> logout(@AuthenticationPrincipal UserDetails userDetails,
                                      HttpServletResponse response) {
-        User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-        user.setTokenValidFrom(LocalDateTime.now());
-        userRepository.save(user);
-        refreshTokenService.revokeAllForUser(user.getId());
+        if (userDetails != null) {
+            userRepository.findByEmail(userDetails.getUsername()).ifPresent(user -> {
+                user.setTokenValidFrom(LocalDateTime.now());
+                userRepository.save(user);
+                refreshTokenService.revokeAllForUser(user.getId());
+            });
+        }
 
         ResponseCookie clear = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true).secure(true).sameSite("None")

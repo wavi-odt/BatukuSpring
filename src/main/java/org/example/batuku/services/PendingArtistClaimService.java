@@ -35,6 +35,8 @@ public class PendingArtistClaimService {
     private final SpotifyClient spotifyClient;
     private final GamificationService gamificationService;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final DiscordAccountRepository discordAccountRepository;
 
     public PendingArtistClaimService(PendingArtistClaimRepository claimRepository,
                                       PendingRegistrationRepository pendingRegistrationRepository,
@@ -46,7 +48,9 @@ public class PendingArtistClaimService {
                                       EmailService emailService,
                                       SpotifyClient spotifyClient,
                                       GamificationService gamificationService,
-                                      PasswordEncoder passwordEncoder) {
+                                      PasswordEncoder passwordEncoder,
+                                      RefreshTokenRepository refreshTokenRepository,
+                                      DiscordAccountRepository discordAccountRepository) {
         this.claimRepository = claimRepository;
         this.pendingRegistrationRepository = pendingRegistrationRepository;
         this.artistProfileRepository = artistProfileRepository;
@@ -58,6 +62,8 @@ public class PendingArtistClaimService {
         this.spotifyClient = spotifyClient;
         this.gamificationService = gamificationService;
         this.passwordEncoder = passwordEncoder;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.discordAccountRepository = discordAccountRepository;
     }
 
     // ── Conversão de utilizador OAuth2 para registo pendente de artista ──
@@ -92,6 +98,9 @@ public class PendingArtistClaimService {
         pendingRegistrationRepository.save(pending);
 
         userProviderRepository.deleteAll(providers);
+        refreshTokenRepository.deleteByUserId(user.getId());
+        discordAccountRepository.findByUserId(user.getId()).ifPresent(discordAccountRepository::delete);
+        claimRepository.clearReviewedBy(user.getId());
         gamificationService.removerDadosUtilizador(user);
         userRepository.delete(user);
 
@@ -151,8 +160,7 @@ public class PendingArtistClaimService {
     // ── Admin ────────────────────────────────────────────────────────────
 
     public List<PendingArtistClaimAdminResponse> listPending() {
-        return claimRepository.findByStatusOrderByCreatedAtAsc(PendingArtistClaim.ClaimStatus.PENDING)
-                .stream()
+        return claimRepository.findByStatusOrderByCreatedAtAsc(PendingArtistClaim.ClaimStatus.PENDING).stream()
                 .map(c -> PendingArtistClaimAdminResponse.from(c,
                         storageService.resolveUrl(c.getSelfieKey(), FileCategory.SELFIE),
                         storageService.resolveUrl(c.getIdDocumentKey(), FileCategory.ID_DOCUMENT)))
