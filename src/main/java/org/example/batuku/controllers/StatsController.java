@@ -348,6 +348,10 @@ public class StatsController {
             if (userDetails != null) {
                 try {
                     User u = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
+                    ArtistProfile owner = track.getArtistProfile();
+                    if (owner != null && owner.getUser() != null && owner.getUser().getId().equals(u.getId())) {
+                        return ResponseEntity.ok(Map.of());
+                    }
                     play.setUser(u);
                 } catch (Exception ignored) {}
             }
