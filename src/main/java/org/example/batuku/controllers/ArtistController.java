@@ -171,6 +171,20 @@ public class ArtistController {
         return ResponseEntity.ok(ArtistMeResponse.from(profile));
     }
 
+    /** PUT /api/artists/me/name: actualiza o nome artístico (ArtistProfile.name). */
+    @PutMapping("/me/name")
+    public ResponseEntity<?> updateName(@RequestBody Map<String, String> body) {
+        ArtistProfile profile = resolveMyProfile();
+        if (profile == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String name = body.getOrDefault("name", "").trim();
+        if (name.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "O nome artístico não pode estar vazio."));
+        }
+        profile.setName(name);
+        artistProfileRepository.save(profile);
+        return ResponseEntity.ok(Map.of("name", name));
+    }
+
     /** PUT /api/artists/me/bio */
     @PutMapping("/me/bio")
     public ResponseEntity<?> updateBio(@Valid @RequestBody ArtistBioRequest request) {

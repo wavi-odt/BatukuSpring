@@ -74,7 +74,7 @@ public class SearchController {
             ArtistProfile ap = userToArtistProfile.get(u.getId());
             String imageUrl = u.getAvatarUrl() != null ? u.getAvatarUrl() : (ap != null ? ap.getImageUrl() : null);
             users.add(new SearchResponse.UserResult(
-                    u.getId(), u.getName(), "@" + u.getUsername(), imageUrl,
+                    u.getId(), ap != null ? ap.getName() : u.getName(), "@" + u.getUsername(), imageUrl,
                     ap != null ? ap.getId() : null));
         }
 
@@ -85,7 +85,7 @@ public class SearchController {
             if (!rawUserIds.contains(u.getId())) {
                 String imageUrl = u.getAvatarUrl() != null ? u.getAvatarUrl() : a.getImageUrl();
                 users.add(new SearchResponse.UserResult(
-                        u.getId(), u.getName(), "@" + u.getUsername(), imageUrl, a.getId()));
+                        u.getId(), a.getName(), "@" + u.getUsername(), imageUrl, a.getId()));
             }
         }
 

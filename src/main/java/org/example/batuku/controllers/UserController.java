@@ -101,7 +101,8 @@ public class UserController {
         var earnedAtMap  = earnedBadges.stream()
                 .collect(java.util.stream.Collectors.toMap(
                         ub -> ub.getBadge().getId(),
-                        ub -> ub.getEarnedAt() != null ? ub.getEarnedAt().toString() : ""));
+                        ub -> ub.getEarnedAt() != null ? ub.getEarnedAt().toString() : "",
+                        (existing, replacement) -> existing));
 
         var badges = badgeRepository.findAll().stream()
                 .map(b -> new UserDetailResponse.BadgeResult(

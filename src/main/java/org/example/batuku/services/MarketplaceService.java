@@ -304,14 +304,13 @@ public class MarketplaceService {
 
     private PurchaseResponse toPurchaseDto(Purchase p) {
         User prod = p.getBeat().getProducer();
-        String producerName = (prod.getName() != null && !prod.getName().isBlank())
-                ? prod.getName() : prod.getUsername();
+        String producerHandle = prod.getUsername() != null ? "@" + prod.getUsername() : prod.getName();
 
         PurchaseResponse dto = new PurchaseResponse();
         dto.setId(p.getId());
         dto.setBeatId(p.getBeat().getId());
         dto.setTitle(p.getBeat().getTitle());
-        dto.setProducer(producerName);
+        dto.setProducer(producerHandle);
         dto.setGenre(p.getBeat().getGenre());
         dto.setLicenseType(p.getLicenseType());
         dto.setPrice(p.getPrice());
@@ -326,13 +325,12 @@ public class MarketplaceService {
 
     private BeatResponse toDto(Beat beat) {
         User prod = beat.getProducer();
-        String producerName = (prod.getName() != null && !prod.getName().isBlank())
-                ? prod.getName() : prod.getUsername();
+        String producerHandle = prod.getUsername() != null ? "@" + prod.getUsername() : prod.getName();
 
         BeatResponse dto = new BeatResponse();
         dto.setId(beat.getId());
         dto.setTitle(beat.getTitle());
-        dto.setProducer(producerName);
+        dto.setProducer(producerHandle);
         dto.setProducerId(prod.getId());
         dto.setGenre(beat.getGenre());
         dto.setBpm(beat.getBpm());

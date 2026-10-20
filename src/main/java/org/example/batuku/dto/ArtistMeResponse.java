@@ -5,6 +5,7 @@ import java.util.List;
 
 public record ArtistMeResponse(
         Long id,
+        String name,
         String bio,
         String location,
         List<String> genres,
@@ -22,6 +23,7 @@ public record ArtistMeResponse(
                 : List.of();
         return new ArtistMeResponse(
                 p.getId(),
+                p.getName(),
                 p.getBio(),
                 p.getLocation(),
                 p.getGenres() != null ? p.getGenres() : List.of(),
