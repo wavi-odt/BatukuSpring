@@ -177,6 +177,29 @@ class UserProfileServiceTest {
     }
 
     @Test
+    @DisplayName("listUsers devolve todos quando q é nulo")
+    void listUsersSeQ() {
+        when(userRepository.findTop50ByOrderByCreatedAtDesc()).thenReturn(List.of(fan));
+
+        var result = service.listUsers(null);
+
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    @DisplayName("toggleVerify inverte o estado verified e devolve UserResponse")
+    void toggleVerify() {
+        fan.setVerified(false);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(fan));
+        when(userRepository.save(fan)).thenReturn(fan);
+
+        var r = service.toggleVerify(1L);
+
+        assertNotNull(r);
+        assertTrue(fan.isVerified());
+    }
+
+    @Test
     @DisplayName("getTopGenres devolve lista com percentagem calculada")
     void getTopGenres() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(fan));

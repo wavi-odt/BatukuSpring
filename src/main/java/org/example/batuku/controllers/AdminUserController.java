@@ -1,14 +1,13 @@
 package org.example.batuku.controllers;
 
-import org.example.batuku.domain.User;
 import org.example.batuku.dto.UserResponse;
-import org.example.batuku.repository.UserRepository;
-import org.springframework.data.domain.PageRequest;
+import org.example.batuku.services.UserProfileService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -16,26 +15,23 @@ import java.util.List;
 @CrossOrigin(origins = "${batuku.cors.allowed-origin}")
 public class AdminUserController {
 
-    private final UserRepository userRepository;
+    private final UserProfileService userProfileService;
 
-    public AdminUserController(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public AdminUserController(UserProfileService userProfileService) {
+        this.userProfileService = userProfileService;
     }
 
     @GetMapping
     public List<UserResponse> listUsers(@RequestParam(required = false) String q) {
-        List<User> users = (q != null && !q.isBlank())
-                ? userRepository.searchUsers(q.trim(), PageRequest.of(0, 50))
-                : userRepository.findTop50ByOrderByCreatedAtDesc();
-        return users.stream().map(UserResponse::from).toList();
+        return userProfileService.listUsers(q);
     }
 
     @PatchMapping("/{id}/verify")
     public ResponseEntity<UserResponse> toggleVerify(@PathVariable Long id) {
-        User user = userRepository.findById(id).orElse(null);
-        if (user == null) return ResponseEntity.notFound().build();
-        user.setVerified(!user.isVerified());
-        userRepository.save(user);
-        return ResponseEntity.ok(UserResponse.from(user));
+        try {
+            return ResponseEntity.ok(userProfileService.toggleVerify(id));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

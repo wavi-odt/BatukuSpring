@@ -5,12 +5,14 @@ import org.example.batuku.domain.PendingRegistration;
 import org.example.batuku.domain.Role;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.RegisterRequest;
+import org.example.batuku.dto.UserResponse;
+import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.LocationRepository;
 import org.example.batuku.repository.PendingArtistClaimRepository;
 import org.example.batuku.repository.PendingRegistrationRepository;
 import org.example.batuku.repository.RoleRepository;
 import org.example.batuku.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,8 +33,10 @@ public class AuthService {
     private final PendingRegistrationRepository pendingRepository;
     private final PendingArtistClaimRepository pendingArtistClaimRepository;
     private final LocationRepository locationRepository;
-    private final GamificationService gamificationService;
-    private final EmailService emailService;
+    private final GamificationService      gamificationService;
+    private final EmailService             emailService;
+    private final ArtistProfileRepository  artistProfileRepository;
+    private final RefreshTokenService      refreshTokenService;
 
     @Value("${batuku.app.base-url}")
     private String appBaseUrl;
@@ -44,15 +48,19 @@ public class AuthService {
                        PendingArtistClaimRepository pendingArtistClaimRepository,
                        LocationRepository locationRepository,
                        GamificationService gamificationService,
-                       EmailService emailService) {
-        this.userRepository   = userRepository;
-        this.roleRepository   = roleRepository;
-        this.passwordEncoder  = passwordEncoder;
-        this.pendingRepository = pendingRepository;
+                       EmailService emailService,
+                       ArtistProfileRepository artistProfileRepository,
+                       RefreshTokenService refreshTokenService) {
+        this.userRepository              = userRepository;
+        this.roleRepository              = roleRepository;
+        this.passwordEncoder             = passwordEncoder;
+        this.pendingRepository           = pendingRepository;
         this.pendingArtistClaimRepository = pendingArtistClaimRepository;
-        this.locationRepository = locationRepository;
-        this.gamificationService = gamificationService;
-        this.emailService     = emailService;
+        this.locationRepository          = locationRepository;
+        this.gamificationService         = gamificationService;
+        this.emailService                = emailService;
+        this.artistProfileRepository     = artistProfileRepository;
+        this.refreshTokenService         = refreshTokenService;
     }
 
     /**
@@ -198,4 +206,29 @@ public class AuthService {
         pendingRepository.deleteByExpiresAtBefore(LocalDateTime.now());
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<java.util.Map<String, String>> getLocations() {
+        return locationRepository.findAll().stream()
+                .map(l -> java.util.Map.of("value", l.getValue(), "group", l.getLocationGroup()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getMe(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        var profile = artistProfileRepository.findByUserId(user.getId());
+        Long artistProfileId   = profile.map(p -> p.getId()).orElse(null);
+        String spotifyArtistId = profile.map(p -> p.getSpotifyArtistId()).orElse(null);
+        String artistImageUrl  = profile.map(p -> p.getImageUrl()).orElse(null);
+        return UserResponse.from(user, artistProfileId, spotifyArtistId, artistImageUrl);
+    }
+
+    @Transactional
+    public void logout(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            user.setTokenValidFrom(LocalDateTime.now());
+            userRepository.save(user);
+            refreshTokenService.revokeAllForUser(user.getId());
+        });
+    }
 }

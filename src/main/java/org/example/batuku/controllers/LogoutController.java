@@ -1,46 +1,30 @@
 package org.example.batuku.controllers;
 
 import jakarta.servlet.http.HttpServletResponse;
-import org.example.batuku.domain.User;
-import org.example.batuku.repository.UserRepository;
-import org.example.batuku.services.RefreshTokenService;
-import org.example.batuku.utils.JwtUserDetailsService;
+import org.example.batuku.services.AuthService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "${batuku.cors.allowed-origin}")
 public class LogoutController {
 
-    private final JwtUserDetailsService jwtUserDetailsService;
-    private final UserRepository userRepository;
-    private final RefreshTokenService refreshTokenService;
+    private final AuthService authService;
 
-    public LogoutController(JwtUserDetailsService jwtUserDetailsService,
-                             UserRepository userRepository,
-                             RefreshTokenService refreshTokenService) {
-        this.jwtUserDetailsService = jwtUserDetailsService;
-        this.userRepository        = userRepository;
-        this.refreshTokenService   = refreshTokenService;
+    public LogoutController(AuthService authService) {
+        this.authService = authService;
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@AuthenticationPrincipal UserDetails userDetails,
-                                     HttpServletResponse response) {
+                                    HttpServletResponse response) {
         if (userDetails != null) {
-            userRepository.findByEmail(userDetails.getUsername()).ifPresent(user -> {
-                user.setTokenValidFrom(LocalDateTime.now());
-                userRepository.save(user);
-                refreshTokenService.revokeAllForUser(user.getId());
-            });
+            authService.logout(userDetails.getUsername());
         }
 
         ResponseCookie clear = ResponseCookie.from("refreshToken", "")

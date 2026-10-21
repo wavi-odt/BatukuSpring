@@ -62,4 +62,9 @@ public class FollowService {
                 .map(f -> FollowUserResponse.from(f.getFollowee()))
                 .toList();
     }
+
+    @Transactional(readOnly = true)
+    public long countFollowers(Long userId) {
+        return followRepository.countByFolloweeId(userId);
+    }
 }

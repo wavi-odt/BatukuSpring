@@ -2,7 +2,6 @@ package org.example.batuku.controllers;
 
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.FollowUserResponse;
-import org.example.batuku.repository.FollowRepository;
 import org.example.batuku.services.FollowService;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.ResponseEntity;
@@ -18,15 +17,12 @@ import java.util.Map;
 @CrossOrigin(origins = "${batuku.cors.allowed-origin}")
 public class FollowController {
 
-    private final FollowService followService;
-    private final FollowRepository followRepository;
-    private final JwtUserDetailsService jwtUserDetailsService;
+    private final FollowService          followService;
+    private final JwtUserDetailsService  jwtUserDetailsService;
 
     public FollowController(FollowService followService,
-                            FollowRepository followRepository,
                             JwtUserDetailsService jwtUserDetailsService) {
-        this.followService = followService;
-        this.followRepository = followRepository;
+        this.followService        = followService;
         this.jwtUserDetailsService = jwtUserDetailsService;
     }
 
@@ -35,8 +31,7 @@ public class FollowController {
                                                     @PathVariable Long userId) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
         followService.follow(user, userId);
-        long followers = followRepository.countByFolloweeId(userId);
-        return ResponseEntity.ok(Map.of("followers", followers));
+        return ResponseEntity.ok(Map.of("followers", followService.countFollowers(userId)));
     }
 
     @DeleteMapping("/{userId}")
@@ -44,8 +39,7 @@ public class FollowController {
                                                       @PathVariable Long userId) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
         followService.unfollow(user, userId);
-        long followers = followRepository.countByFolloweeId(userId);
-        return ResponseEntity.ok(Map.of("followers", followers));
+        return ResponseEntity.ok(Map.of("followers", followService.countFollowers(userId)));
     }
 
     @GetMapping("/followers/{userId}")

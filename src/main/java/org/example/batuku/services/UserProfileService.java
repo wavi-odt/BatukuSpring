@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -232,6 +234,21 @@ public class UserProfileService {
         String key = storageService.store(file, FileCategory.AUDIO);
         String url = storageService.resolveUrl(key, FileCategory.AUDIO);
         return Map.of("key", key, "url", url);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> listUsers(String q) {
+        List<User> users = (q != null && !q.isBlank())
+                ? userRepository.searchUsers(q.trim(), PageRequest.of(0, 50))
+                : userRepository.findTop50ByOrderByCreatedAtDesc();
+        return users.stream().map(UserResponse::from).toList();
+    }
+
+    @Transactional
+    public UserResponse toggleVerify(Long id) {
+        User user = userRepository.findById(id).orElseThrow();
+        user.setVerified(!user.isVerified());
+        return UserResponse.from(userRepository.save(user));
     }
 
     private List<Map<String, Object>> buildRecentlyPlayed(List<Object[]> rows) {
