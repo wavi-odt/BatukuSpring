@@ -231,7 +231,7 @@ public class StatsService {
         return forecastService.forecastPlays(artistId, historyDays, forecastDays);
     }
 
-    /** POST /api/tracks/{id}/play — devolve o playId ou empty se a play não deve ser registada. */
+    /** POST /api/tracks/{id}/play: devolve o playId ou empty se a play não deve ser registada. */
     @Transactional
     public Optional<Long> recordPlay(Long trackId, String country, String context, User user) {
         Track track = trackRepository.findById(trackId).orElse(null);
