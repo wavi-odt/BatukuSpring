@@ -241,7 +241,10 @@ public class UserProfileService {
         List<User> users = (q != null && !q.isBlank())
                 ? userRepository.searchUsers(q.trim(), PageRequest.of(0, 50))
                 : userRepository.findTop50ByOrderByCreatedAtDesc();
-        return users.stream().map(UserResponse::from).toList();
+        return users.stream()
+                .filter(u -> u.getUserRole() != User.UserRole.ADMIN)
+                .map(UserResponse::from)
+                .toList();
     }
 
     @Transactional

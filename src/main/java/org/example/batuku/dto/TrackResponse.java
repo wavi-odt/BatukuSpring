@@ -9,6 +9,7 @@ public class TrackResponse {
     private String title;
     private Long artistProfileId;
     private String artistName;
+    private String artistAvatarUrl;
     private String source;
     private String audioUrl;
     private String spotifyUrl;
@@ -33,6 +34,7 @@ public class TrackResponse {
         r.title = track.getTitle();
         r.artistProfileId = track.getArtistProfile().getId();
         r.artistName = track.getArtistProfile().getName();
+        r.artistAvatarUrl = track.getArtistProfile().getImageUrl();
         r.source = track.getSource().name();
         r.audioUrl = track.getAudioUrl();
         r.spotifyUrl = track.getSpotifyUrl();
@@ -58,6 +60,7 @@ public class TrackResponse {
     public String getTitle() { return title; }
     public Long getArtistProfileId() { return artistProfileId; }
     public String getArtistName() { return artistName; }
+    public String getArtistAvatarUrl() { return artistAvatarUrl; }
     public String getSource() { return source; }
     public String getAudioUrl() { return audioUrl; }
     public String getSpotifyUrl() { return spotifyUrl; }
