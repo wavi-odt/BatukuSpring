@@ -232,7 +232,9 @@ public class StatsService {
     }
 
     /** POST /api/tracks/{id}/play — devolve o playId ou empty se a play não deve ser registada. */
-    public Optional<Long> recordPlay(Track track, String country, String context, User user) {
+    @Transactional
+    public Optional<Long> recordPlay(Long trackId, String country, String context, User user) {
+        Track track = trackRepository.findById(trackId).orElse(null);
         if (track == null) return Optional.empty();
         Play play = new Play();
         play.setTrack(track);

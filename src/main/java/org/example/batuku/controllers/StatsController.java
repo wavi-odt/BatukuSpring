@@ -1,11 +1,9 @@
 package org.example.batuku.controllers;
 
 import org.example.batuku.domain.ArtistProfile;
-import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.ForecastResponse;
 import org.example.batuku.dto.StatsResponse;
-import org.example.batuku.repository.TrackRepository;
 import org.example.batuku.services.StatsService;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.ResponseEntity;
@@ -21,14 +19,11 @@ import java.util.Map;
 public class StatsController {
 
     private final StatsService           statsService;
-    private final TrackRepository        trackRepository;
     private final JwtUserDetailsService  jwtUserDetailsService;
 
     public StatsController(StatsService statsService,
-                           TrackRepository trackRepository,
                            JwtUserDetailsService jwtUserDetailsService) {
         this.statsService          = statsService;
-        this.trackRepository       = trackRepository;
         this.jwtUserDetailsService = jwtUserDetailsService;
     }
 
@@ -80,14 +75,13 @@ public class StatsController {
             @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            Track track = trackRepository.findById(id).orElse(null);
             User user = null;
             if (userDetails != null) {
                 try { user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername()); } catch (Exception ignored) {}
             }
             String country = body != null ? body.get("country") : null;
             String context = body != null ? body.get("context") : null;
-            return statsService.recordPlay(track, country, context, user)
+            return statsService.recordPlay(id, country, context, user)
                     .map(playId -> ResponseEntity.ok(Map.of("playId", playId)))
                     .orElse(ResponseEntity.ok(Map.of()));
         } catch (Exception ignored) {}

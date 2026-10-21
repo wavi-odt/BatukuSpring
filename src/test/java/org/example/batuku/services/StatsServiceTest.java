@@ -108,9 +108,10 @@ class StatsServiceTest {
     @DisplayName("recordPlay regista play e devolve playId")
     void recordPlayDevolveId() {
         Play saved = TestData.withId(new Play(), 99L);
+        when(trackRepository.findById(5L)).thenReturn(Optional.of(track));
         when(playRepository.save(any())).thenReturn(saved);
 
-        Optional<Long> playId = service.recordPlay(track, "PT", "home", null);
+        Optional<Long> playId = service.recordPlay(5L, "PT", "home", null);
 
         assertTrue(playId.isPresent());
         assertEquals(99L, playId.get());
@@ -120,17 +121,19 @@ class StatsServiceTest {
     @DisplayName("recordPlay não regista quando o ouvinte é o dono da faixa")
     void recordPlayDonoNaoContabiliza() {
         track.getArtistProfile().setUser(artist);
+        when(trackRepository.findById(5L)).thenReturn(Optional.of(track));
 
-        Optional<Long> playId = service.recordPlay(track, null, null, artist);
+        Optional<Long> playId = service.recordPlay(5L, null, null, artist);
 
         assertTrue(playId.isEmpty());
         verify(playRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("recordPlay devolve empty quando track é null")
+    @DisplayName("recordPlay devolve empty quando track não existe")
     void recordPlayTrackNull() {
-        assertTrue(service.recordPlay(null, null, null, null).isEmpty());
+        when(trackRepository.findById(999L)).thenReturn(Optional.empty());
+        assertTrue(service.recordPlay(999L, null, null, null).isEmpty());
         verify(playRepository, never()).save(any());
     }
 
