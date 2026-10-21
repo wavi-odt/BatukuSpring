@@ -1,18 +1,7 @@
 package org.example.batuku.controllers;
 
-import jakarta.validation.Valid;
-import org.example.batuku.domain.ArtistProfile;
-import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
-import org.example.batuku.dto.CreateTrackRequest;
-import org.example.batuku.dto.TrackDetailResponse;
 import org.example.batuku.dto.TrackResponse;
-import org.example.batuku.repository.AlbumTrackRepository;
-import org.example.batuku.repository.ArtistFollowRepository;
-import org.example.batuku.repository.LikeRepository;
-import org.example.batuku.repository.PlayRepository;
-import org.example.batuku.repository.CommentRepository;
-import org.example.batuku.repository.TrackRepository;
 import org.example.batuku.services.TrackService;
 import org.example.batuku.utils.JwtUserDetailsService;
 import org.springframework.http.HttpStatus;
@@ -34,37 +23,14 @@ import java.util.Map;
 public class TrackController {
 
     private final TrackService trackService;
-    private final TrackRepository trackRepository;
-    private final LikeRepository likeRepository;
-    private final PlayRepository playRepository;
-    private final CommentRepository commentRepository;
-    private final AlbumTrackRepository albumTrackRepository;
-    private final ArtistFollowRepository artistFollowRepository;
     private final JwtUserDetailsService jwtUserDetailsService;
 
     public TrackController(TrackService trackService,
-                           TrackRepository trackRepository,
-                           LikeRepository likeRepository,
-                           PlayRepository playRepository,
-                           CommentRepository commentRepository,
-                           AlbumTrackRepository albumTrackRepository,
-                           ArtistFollowRepository artistFollowRepository,
                            JwtUserDetailsService jwtUserDetailsService) {
         this.trackService = trackService;
-        this.trackRepository = trackRepository;
-        this.likeRepository = likeRepository;
-        this.playRepository = playRepository;
-        this.commentRepository = commentRepository;
-        this.albumTrackRepository = albumTrackRepository;
-        this.artistFollowRepository = artistFollowRepository;
         this.jwtUserDetailsService = jwtUserDetailsService;
     }
 
-    /**
-     * Publicação direta de uma faixa: título + género (texto) + ficheiro de
-     * áudio + capa opcional, tudo numa só chamada multipart, contrato usado
-     * pelo modal Publish.jsx (aba "Faixa").
-     */
     @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize("hasRole('ARTIST')")
     public ResponseEntity<TrackResponse> create(@AuthenticationPrincipal UserDetails userDetails,
@@ -76,10 +42,8 @@ public class TrackController {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
         LocalDateTime scheduled = (scheduledAt != null && !scheduledAt.isBlank())
                 ? LocalDateTime.parse(scheduledAt) : null;
-        Track track = trackService.createFromUpload(user, title, genre, audio, cover, scheduled);
-        long likes = likeRepository.countByTrackId(track.getId());
-        return ResponseEntity.created(URI.create("/api/tracks/" + track.getId()))
-                .body(TrackResponse.from(track, likes));
+        TrackResponse r = trackService.createFromUploadWithStats(user, title, genre, audio, cover, scheduled);
+        return ResponseEntity.created(URI.create("/api/tracks/" + r.getId())).body(r);
     }
 
     @PatchMapping("/{id}")
@@ -89,11 +53,7 @@ public class TrackController {
                                                 @RequestBody Map<String, String> body) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
         try {
-            Track track = trackService.update(id, body.get("title"), body.get("genre"), user);
-            return ResponseEntity.ok(TrackResponse.from(track,
-                    likeRepository.countByTrackId(track.getId()),
-                    playRepository.countByTrackId(track.getId()),
-                    commentRepository.countByTrackId(track.getId())));
+            return ResponseEntity.ok(trackService.updateWithStats(id, body.get("title"), body.get("genre"), user));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -122,9 +82,7 @@ public class TrackController {
 
     @GetMapping
     public List<TrackResponse> listAll() {
-        return trackService.listAll().stream()
-                .map(t -> TrackResponse.from(t, likeRepository.countByTrackId(t.getId())))
-                .toList();
+        return trackService.listAllWithLikes();
     }
 
     @PatchMapping(value = "/{id}/cover", consumes = "multipart/form-data")
@@ -134,13 +92,7 @@ public class TrackController {
                                                      @RequestParam("cover") MultipartFile cover) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
         try {
-            Track track = trackService.updateCover(id, user, cover);
-            TrackResponse r = TrackResponse.from(track,
-                    likeRepository.countByTrackId(track.getId()),
-                    playRepository.countByTrackId(track.getId()),
-                    commentRepository.countByTrackId(track.getId()));
-            r.setBelongsToRelease(false);
-            return ResponseEntity.ok(r);
+            return ResponseEntity.ok(trackService.updateCoverWithStats(id, user, cover));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (IllegalArgumentException e) {
@@ -148,45 +100,20 @@ public class TrackController {
         }
     }
 
-    /** GET /api/tracks/following: faixas recentes publicadas pelos artistas que o utilizador segue. */
     @GetMapping("/following")
     public ResponseEntity<List<TrackResponse>> getFollowingTracks(
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = jwtUserDetailsService.loadUserEntity(userDetails.getUsername());
-        List<Long> artistIds = artistFollowRepository.findByFollowerIdOrderByCreatedAtDesc(user.getId())
-                .stream().map(f -> f.getArtistProfile().getId()).toList();
-        if (artistIds.isEmpty()) return ResponseEntity.ok(List.of());
-        List<Track> tracks = trackRepository.findTop20ByArtistProfileIdInAndIsPublishedTrueOrderByCreatedAtDesc(artistIds);
-        return ResponseEntity.ok(tracks.stream()
-                .map(t -> TrackResponse.from(t,
-                        likeRepository.countByTrackId(t.getId()),
-                        playRepository.countByTrackId(t.getId()),
-                        0L))
-                .toList());
+        return ResponseEntity.ok(trackService.getFollowingTracks(user));
     }
 
     @GetMapping("/artist/{artistProfileId}")
     public List<TrackResponse> listByArtist(@PathVariable Long artistProfileId) {
-        return trackService.listByArtist(artistProfileId).stream()
-                .map(t -> {
-                    TrackResponse r = TrackResponse.from(t,
-                            likeRepository.countByTrackId(t.getId()),
-                            playRepository.countByTrackId(t.getId()),
-                            commentRepository.countByTrackId(t.getId()));
-                    r.setBelongsToRelease(albumTrackRepository.existsByTrackId(t.getId()));
-                    return r;
-                })
-                .toList();
+        return trackService.listByArtistWithStats(artistProfileId);
     }
 
     @GetMapping("/{id}")
     public TrackResponse getTrack(@PathVariable Long id) {
-        Track t = trackService.findById(id);
-        TrackResponse r = TrackResponse.from(t,
-                likeRepository.countByTrackId(t.getId()),
-                playRepository.countByTrackId(t.getId()),
-                commentRepository.countByTrackId(t.getId()));
-        r.setBelongsToRelease(albumTrackRepository.existsByTrackId(t.getId()));
-        return r;
+        return trackService.getTrackWithStats(id);
     }
 }

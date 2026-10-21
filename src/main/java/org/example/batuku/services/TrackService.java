@@ -6,8 +6,10 @@ import org.example.batuku.domain.Genre;
 import org.example.batuku.domain.Track;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.CreateTrackRequest;
+import org.example.batuku.dto.TrackResponse;
 import org.example.batuku.repository.AlbumRepository;
 import org.example.batuku.repository.AlbumTrackRepository;
+import org.example.batuku.repository.ArtistFollowRepository;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.CommentRepository;
 import org.example.batuku.repository.GenreRepository;
@@ -53,6 +55,7 @@ public class TrackService {
     private final PlayRepository playRepository;
     private final PlaylistTrackRepository playlistTrackRepository;
     private final ShareRepository shareRepository;
+    private final ArtistFollowRepository artistFollowRepository;
 
     public TrackService(TrackRepository trackRepository,
                         ArtistProfileRepository artistProfileRepository,
@@ -65,7 +68,8 @@ public class TrackService {
                         CommentRepository commentRepository,
                         PlayRepository playRepository,
                         PlaylistTrackRepository playlistTrackRepository,
-                        ShareRepository shareRepository) {
+                        ShareRepository shareRepository,
+                        ArtistFollowRepository artistFollowRepository) {
         this.trackRepository = trackRepository;
         this.artistProfileRepository = artistProfileRepository;
         this.genreRepository = genreRepository;
@@ -78,6 +82,7 @@ public class TrackService {
         this.playRepository = playRepository;
         this.playlistTrackRepository = playlistTrackRepository;
         this.shareRepository = shareRepository;
+        this.artistFollowRepository = artistFollowRepository;
     }
 
     /**
@@ -265,6 +270,79 @@ public class TrackService {
         if (title != null && !title.isBlank()) track.setTitle(title.trim());
         if (genreName != null) track.setGenre(resolveGenre(genreName.isBlank() ? null : genreName));
         return trackRepository.save(track);
+    }
+
+    public TrackResponse createFromUploadWithStats(User user, String title, String genreName,
+                                                   MultipartFile audio, MultipartFile cover,
+                                                   LocalDateTime scheduledAt) {
+        Track track = createFromUpload(user, title, genreName, audio, cover, scheduledAt);
+        return TrackResponse.from(track, likeRepository.countByTrackId(track.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TrackResponse> listAllWithLikes() {
+        return trackRepository.findAll().stream()
+                .map(t -> TrackResponse.from(t, likeRepository.countByTrackId(t.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TrackResponse> listByArtistWithStats(Long artistProfileId) {
+        return trackRepository.findByArtistProfileId(artistProfileId).stream()
+                .map(t -> {
+                    TrackResponse r = TrackResponse.from(t,
+                            likeRepository.countByTrackId(t.getId()),
+                            playRepository.countByTrackId(t.getId()),
+                            commentRepository.countByTrackId(t.getId()));
+                    r.setBelongsToRelease(albumTrackRepository.existsByTrackId(t.getId()));
+                    return r;
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TrackResponse getTrackWithStats(Long id) {
+        Track t = trackRepository.findById(id).orElseThrow();
+        TrackResponse r = TrackResponse.from(t,
+                likeRepository.countByTrackId(t.getId()),
+                playRepository.countByTrackId(t.getId()),
+                commentRepository.countByTrackId(t.getId()));
+        r.setBelongsToRelease(albumTrackRepository.existsByTrackId(t.getId()));
+        return r;
+    }
+
+    @Transactional(readOnly = true)
+    public List<TrackResponse> getFollowingTracks(User user) {
+        List<Long> artistIds = artistFollowRepository.findByFollowerIdOrderByCreatedAtDesc(user.getId())
+                .stream().map(f -> f.getArtistProfile().getId()).toList();
+        if (artistIds.isEmpty()) return List.of();
+        return trackRepository.findTop20ByArtistProfileIdInAndIsPublishedTrueOrderByCreatedAtDesc(artistIds)
+                .stream()
+                .map(t -> TrackResponse.from(t,
+                        likeRepository.countByTrackId(t.getId()),
+                        playRepository.countByTrackId(t.getId()),
+                        0L))
+                .toList();
+    }
+
+    @Transactional
+    public TrackResponse updateWithStats(Long id, String title, String genreName, User user) {
+        Track track = update(id, title, genreName, user);
+        return TrackResponse.from(track,
+                likeRepository.countByTrackId(track.getId()),
+                playRepository.countByTrackId(track.getId()),
+                commentRepository.countByTrackId(track.getId()));
+    }
+
+    @Transactional
+    public TrackResponse updateCoverWithStats(Long id, User user, MultipartFile cover) {
+        Track track = updateCover(id, user, cover);
+        TrackResponse r = TrackResponse.from(track,
+                likeRepository.countByTrackId(track.getId()),
+                playRepository.countByTrackId(track.getId()),
+                commentRepository.countByTrackId(track.getId()));
+        r.setBelongsToRelease(false);
+        return r;
     }
 
     // Helpers, reutilizados tambem pelo AlbumService
