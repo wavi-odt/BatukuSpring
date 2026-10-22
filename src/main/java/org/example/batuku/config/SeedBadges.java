@@ -11,14 +11,18 @@ import org.springframework.core.annotation.Order;
  * Cria os badges de gamificação quando a aplicação arranca.
  * Idempotente, só insere se ainda não existir (verifica pelo nome único).
  *
- * Badges organizados por pontos necessários (pointsRequired):
- *   O utilizador desbloqueia o badge automaticamente ao atingir o threshold
- *   de pontos totais acumulados na plataforma.
+ * Os badges NÃO se desbloqueiam por pontos: são atribuídos por condições
+ * específicas verificadas em GamificationService.verificarBadges
+ * (ex.: streak, artistas ouvidos/seguidos, rank, nível, likes em playlists,
+ * horas ouvidas, madrugador).
  *
- * Pontos ganhos por ação (referência para GamificationService):
- *   PLAY    = 10 pts   LIKE      = 5 pts
- *   COMMENT = 15 pts   FOLLOW    = 8 pts
- *   SHARE   = 20 pts   STREAK    = 25 pts/dia
+ * O campo pointsRequired é legado — usado apenas para definir a cor/nível
+ * visual do badge no front-end.
+ *
+ * Pontos ganhos por ação (mapa POINTS em GamificationService):
+ *   PLAY    = 10 pts   LIKE             =  5 pts
+ *   COMMENT = 15 pts   FOLLOW           =  5 pts
+ *   SHARE   = 20 pts   MISSION_COMPLETE = 50 pts
  */
 @Configuration
 public class SeedBadges {
