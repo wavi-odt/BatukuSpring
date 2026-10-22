@@ -39,6 +39,8 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -236,6 +238,64 @@ class GamificationServiceTest {
         service.adicionarPontos(fan, PointTransaction.ActionType.LIKE, 1L);
 
         assertEquals(5, pontos.getTotalPoints().intValue());     // apenas o gosto
+        verify(challengeRewardRepository, never()).save(any(UserChallengeReward.class));
+    }
+
+    // ── Testes de persistência de desafios recompensados ─────────────────
+
+    @Test
+    @DisplayName("Desafio ja recompensado aparece completed=true e progress=total, mesmo com contador a 0")
+    void desafioRecompensadoApareceConcluido() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(fan));
+        when(challengeRewardRepository.findRewardedChallengeIds(eq(1L), eq(0)))
+                .thenReturn(Set.of("ch-marathon"));
+
+        List<org.example.batuku.dto.ChallengeResponse> result = service.obterDesafios(1L);
+
+        org.example.batuku.dto.ChallengeResponse marathon = result.stream()
+                .filter(ch -> "ch-marathon".equals(ch.getId()))
+                .findFirst().orElseThrow();
+        assertEquals(true, marathon.isCompleted());
+        assertEquals(marathon.getTotal(), marathon.getProgress());
+        assertNull(marathon.getExpires());
+    }
+
+    @Test
+    @DisplayName("avancarDesafios retorna novo conjunto quando os 6 estao recompensados, mesmo com contadores a 0")
+    void avancarDesafiosComTodosRecompensados() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(fan));
+        when(challengeRewardRepository.findRewardedChallengeIds(eq(1L), eq(0)))
+                .thenReturn(Set.of("ch-marathon", "ch-comment", "ch-discover",
+                                   "ch-follow", "ch-streak7", "ch-collector"));
+
+        List<org.example.batuku.dto.ChallengeResponse> result = service.avancarDesafios(1L);
+
+        assertNotNull(result);
+        assertEquals(6, result.size());
+    }
+
+    @Test
+    @DisplayName("avancarDesafios retorna null quando so 3 de 6 desafios estao recompensados")
+    void avancarDesafiosComSetIncompleto() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(fan));
+        when(challengeRewardRepository.findRewardedChallengeIds(eq(1L), eq(0)))
+                .thenReturn(Set.of("ch-marathon", "ch-comment", "ch-discover"));
+
+        List<org.example.batuku.dto.ChallengeResponse> result = service.avancarDesafios(1L);
+
+        assertNull(result);
+    }
+
+    @Test
+    @DisplayName("autoRewardCompleted nao paga desafio ja recompensado, mesmo que aplicarRecompensados o marque como concluido")
+    void autoRewardNaoVoltaAPagarJaRecompensado() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(fan));
+        when(playRepository.sumDurationPlayedSince(eq(1L), any(LocalDateTime.class))).thenReturn(3_600_000L);
+        when(challengeRewardRepository.findRewardedChallengeIds(eq(1L), eq(0)))
+                .thenReturn(Set.of("ch-marathon"));
+
+        service.obterDesafios(1L);
+
         verify(challengeRewardRepository, never()).save(any(UserChallengeReward.class));
     }
 }

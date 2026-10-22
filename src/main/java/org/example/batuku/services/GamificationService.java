@@ -149,8 +149,8 @@ public class GamificationService {
             }
         }
 
+        verificarBadges(user, up);
         if (actionType != PointTransaction.ActionType.MISSION_COMPLETE) {
-            verificarBadges(user, up);
             verificarDesafios(user);
         }
     }
@@ -283,6 +283,7 @@ public class GamificationService {
         int setOffset = user.getChallengeSetOffset();
         int setIndex  = setOffset % TOTAL_SETS;
         List<ChallengeResponse> desafios = construirSet(userId, setIndex);
+        aplicarRecompensados(userId, desafios, setOffset);
         autoRewardCompleted(user, desafios, setOffset);
         return desafios;
     }
@@ -293,12 +294,14 @@ public class GamificationService {
     public List<ChallengeResponse> avancarDesafios(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
-        int setIndex  = user.getChallengeSetOffset() % TOTAL_SETS;
+        int setOffset = user.getChallengeSetOffset();
+        int setIndex  = setOffset % TOTAL_SETS;
         List<ChallengeResponse> atual = construirSet(userId, setIndex);
+        aplicarRecompensados(userId, atual, setOffset);
         boolean todosCompletos = atual.stream().allMatch(ChallengeResponse::isCompleted);
         if (!todosCompletos) return null;
 
-        int novoOffset = user.getChallengeSetOffset() + 1;
+        int novoOffset = setOffset + 1;
         user.setChallengeSetOffset(novoOffset);
         userRepository.save(user);
 
@@ -445,7 +448,19 @@ public class GamificationService {
     private void verificarDesafios(User user) {
         int setOffset = user.getChallengeSetOffset();
         List<ChallengeResponse> desafios = construirSet(user.getId(), setOffset % TOTAL_SETS);
+        aplicarRecompensados(user.getId(), desafios, setOffset);
         autoRewardCompleted(user, desafios, setOffset);
+    }
+
+    private void aplicarRecompensados(Long userId, List<ChallengeResponse> desafios, int setOffset) {
+        Set<String> recompensados = challengeRewardRepository.findRewardedChallengeIds(userId, setOffset);
+        for (ChallengeResponse ch : desafios) {
+            if (recompensados.contains(ch.getId())) {
+                ch.setCompleted(true);
+                ch.setProgress(ch.getTotal());
+                ch.setExpires(null);
+            }
+        }
     }
 
     private void verificarBadges(User user, UserPoints up) {
