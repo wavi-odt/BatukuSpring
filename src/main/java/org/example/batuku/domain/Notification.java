@@ -16,7 +16,7 @@ public class Notification {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "VARCHAR(30)")
     private NotificationType type;
 
     @Column(name = "reference_id")

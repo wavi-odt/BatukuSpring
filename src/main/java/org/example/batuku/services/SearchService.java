@@ -93,7 +93,9 @@ public class SearchService {
     private SearchResponse.TrackResult toTrackResult(Track t) {
         return new SearchResponse.TrackResult(
                 t.getId(), t.getTitle(), t.getArtistProfile().getName(),
-                t.getCoverUrl(), formatDuration(t.getDurationMs()));
+                t.getCoverUrl(), formatDuration(t.getDurationMs()),
+                t.getAudioUrl(), t.getArtistProfile().getId(),
+                t.getSpotifyTrackId(), t.getDurationMs());
     }
 
     private static String formatDuration(Integer ms) {

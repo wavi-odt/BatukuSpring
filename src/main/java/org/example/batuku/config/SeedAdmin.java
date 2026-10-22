@@ -26,7 +26,8 @@ import java.util.Set;
 @Configuration
 public class SeedAdmin {
 
-    @Value("${batuku.admin.seed-password:*#aDMINbATUKUuP}")
+    @Value("${batuku.admin.seed-password: " +
+            "*#aDMINbATUKUuP}")
     private String seedPassword;
 
     @Bean

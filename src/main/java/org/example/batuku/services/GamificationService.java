@@ -141,12 +141,16 @@ public class GamificationService {
         transactionRepository.save(tx);
 
         if (up.getLevel() > nivelAnterior) {
-            notificationService.notify(user, Notification.NotificationType.LEVEL_UP, null,
-                    "Subiste para o Nível " + up.getLevel() + "! 🏆");
+            try {
+                notificationService.notify(user, Notification.NotificationType.LEVEL_UP, null,
+                        "Subiste para o Nível " + up.getLevel() + "! 🏆");
+            } catch (Exception e) {
+                log.error("Falha ao enviar notificação de level-up para utilizador {}: {}", user.getId(), e.getMessage());
+            }
         }
 
-        verificarBadges(user, up);
         if (actionType != PointTransaction.ActionType.MISSION_COMPLETE) {
+            verificarBadges(user, up);
             verificarDesafios(user);
         }
     }
@@ -318,9 +322,13 @@ public class GamificationService {
                 challengeRewardRepository.save(new UserChallengeReward(user, ch.getId(), setOffset));
                 jaRecompensados.add(ch.getId());
                 houveConclusaoNova = true;
-                notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
-                        "Desafio \"" + ch.getTitle() + "\" concluído! +" + ch.getXp() + " pts 🎯");
                 log.info("Challenge '{}' (set {}) rewarded: +{} pts to user {}", ch.getId(), setOffset, ch.getXp(), user.getId());
+                try {
+                    notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
+                            "Desafio \"" + ch.getTitle() + "\" concluído! +" + ch.getXp() + " pts 🎯");
+                } catch (Exception e) {
+                    log.error("Falha ao enviar notificação de desafio para utilizador {}: {}", user.getId(), e.getMessage());
+                }
             }
         }
 
@@ -328,8 +336,12 @@ public class GamificationService {
             long totalRecompensados = challengeRewardRepository.countByUserIdAndSetOffset(user.getId(), setOffset);
             if (totalRecompensados >= desafios.size()) {
                 int totalXp = desafios.stream().mapToInt(ChallengeResponse::getXp).sum();
-                notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
-                        "Completaste todos os desafios do conjunto " + (setIndex + 1) + "! +" + totalXp + " pts");
+                try {
+                    notificationService.notify(user, Notification.NotificationType.CHALLENGE_COMPLETED, null,
+                            "Completaste todos os desafios do conjunto " + (setIndex + 1) + "! +" + totalXp + " pts");
+                } catch (Exception e) {
+                    log.error("Falha ao enviar notificação de conjunto completo para utilizador {}: {}", user.getId(), e.getMessage());
+                }
             }
         }
     }
@@ -476,8 +488,12 @@ public class GamificationService {
                 ub.setUser(user);
                 ub.setBadge(badge);
                 userBadgeRepository.save(ub);
-                notificationService.notify(user, Notification.NotificationType.BADGE, badge.getId(),
-                        "Conquistaste o badge \"" + badge.getName() + "\"!");
+                try {
+                    notificationService.notify(user, Notification.NotificationType.BADGE, badge.getId(),
+                            "Conquistaste o badge \"" + badge.getName() + "\"!");
+                } catch (Exception e) {
+                    log.error("Falha ao enviar notificação de badge para utilizador {}: {}", user.getId(), e.getMessage());
+                }
             }
         }
     }

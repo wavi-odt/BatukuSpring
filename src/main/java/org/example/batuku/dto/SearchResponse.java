@@ -9,7 +9,8 @@ public record SearchResponse(
         List<UserResult> users
 ) {
     public record ArtistResult(Long id, String name, String imageUrl, String genre) {}
-    public record TrackResult(Long id, String title, String artist, String imageUrl, String duration) {}
+    public record TrackResult(Long id, String title, String artist, String imageUrl, String duration,
+                              String audioUrl, Long artistProfileId, String spotifyId, Integer durationMs) {}
     public record PlaylistResult(Long id, String name, String imageUrl, Integer trackCount) {}
 
     /**

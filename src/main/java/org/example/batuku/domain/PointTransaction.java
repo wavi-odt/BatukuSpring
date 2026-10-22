@@ -16,7 +16,7 @@ public class PointTransaction {
     private User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "action_type", nullable = false, length = 30)
+    @Column(name = "action_type", nullable = false, columnDefinition = "VARCHAR(30)")
     private ActionType actionType;
 
     @Column(nullable = false)
