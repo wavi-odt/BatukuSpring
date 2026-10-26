@@ -69,6 +69,8 @@ public class WebSecurityConfig {
                     "/api/auth/register",
                     "/api/auth/verify-email",
                     "/api/auth/resend-verification",
+                    "/api/auth/forgot-password",
+                    "/api/auth/reset-password",
                     "/api/auth/locations",
                     "/api/auth/magic",
                     "/api/auth/artist-claim-submit",

@@ -149,4 +149,11 @@ public class EmailService {
         ctx.setVariable("artistName", artistName);
         send(user.getEmail(), "O teu pedido precisa de mais informação", "claim-doubtful", ctx);
     }
+
+    public void sendPasswordResetEmail(String email, String name, String resetUrl) {
+        Context ctx = new Context();
+        ctx.setVariable("name", name);
+        ctx.setVariable("resetUrl", resetUrl);
+        send(email, "Recuperar password - Batuku", "reset-password", ctx);
+    }
 }

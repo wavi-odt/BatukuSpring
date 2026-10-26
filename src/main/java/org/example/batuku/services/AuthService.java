@@ -1,5 +1,6 @@
 package org.example.batuku.services;
 
+import org.example.batuku.domain.PasswordResetToken;
 import org.example.batuku.domain.PendingArtistClaim;
 import org.example.batuku.domain.PendingRegistration;
 import org.example.batuku.domain.Role;
@@ -8,6 +9,7 @@ import org.example.batuku.dto.RegisterRequest;
 import org.example.batuku.dto.UserResponse;
 import org.example.batuku.repository.ArtistProfileRepository;
 import org.example.batuku.repository.LocationRepository;
+import org.example.batuku.repository.PasswordResetTokenRepository;
 import org.example.batuku.repository.PendingArtistClaimRepository;
 import org.example.batuku.repository.PendingRegistrationRepository;
 import org.example.batuku.repository.RoleRepository;
@@ -33,10 +35,11 @@ public class AuthService {
     private final PendingRegistrationRepository pendingRepository;
     private final PendingArtistClaimRepository pendingArtistClaimRepository;
     private final LocationRepository locationRepository;
-    private final GamificationService      gamificationService;
-    private final EmailService             emailService;
-    private final ArtistProfileRepository  artistProfileRepository;
-    private final RefreshTokenService      refreshTokenService;
+    private final GamificationService           gamificationService;
+    private final EmailService                  emailService;
+    private final ArtistProfileRepository       artistProfileRepository;
+    private final RefreshTokenService           refreshTokenService;
+    private final PasswordResetTokenRepository  passwordResetTokenRepository;
 
     @Value("${batuku.app.base-url}")
     private String appBaseUrl;
@@ -50,17 +53,19 @@ public class AuthService {
                        GamificationService gamificationService,
                        EmailService emailService,
                        ArtistProfileRepository artistProfileRepository,
-                       RefreshTokenService refreshTokenService) {
-        this.userRepository              = userRepository;
-        this.roleRepository              = roleRepository;
-        this.passwordEncoder             = passwordEncoder;
-        this.pendingRepository           = pendingRepository;
+                       RefreshTokenService refreshTokenService,
+                       PasswordResetTokenRepository passwordResetTokenRepository) {
+        this.userRepository               = userRepository;
+        this.roleRepository               = roleRepository;
+        this.passwordEncoder              = passwordEncoder;
+        this.pendingRepository            = pendingRepository;
         this.pendingArtistClaimRepository = pendingArtistClaimRepository;
-        this.locationRepository          = locationRepository;
-        this.gamificationService         = gamificationService;
-        this.emailService                = emailService;
-        this.artistProfileRepository     = artistProfileRepository;
-        this.refreshTokenService         = refreshTokenService;
+        this.locationRepository           = locationRepository;
+        this.gamificationService          = gamificationService;
+        this.emailService                 = emailService;
+        this.artistProfileRepository      = artistProfileRepository;
+        this.refreshTokenService          = refreshTokenService;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
     }
 
     /**
@@ -200,10 +205,56 @@ public class AuthService {
         emailService.sendWelcomeEmail(user);
     }
 
+    /**
+     * Gera um token de recuperação e envia o email.
+     * Responde sempre com sucesso para não revelar se o email existe.
+     */
+    @Transactional
+    public void forgotPassword(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        passwordResetTokenRepository.deleteByEmail(normalizedEmail);
+
+        userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
+            PasswordResetToken prt = new PasswordResetToken();
+            prt.setToken(UUID.randomUUID().toString());
+            prt.setEmail(normalizedEmail);
+            prt.setExpiresAt(LocalDateTime.now().plusHours(1));
+            passwordResetTokenRepository.save(prt);
+
+            String resetUrl = appBaseUrl + "/reset-password?token=" + prt.getToken();
+            emailService.sendPasswordResetEmail(normalizedEmail, user.getName(), resetUrl);
+        });
+    }
+
+    /**
+     * Valida o token e actualiza a password.
+     */
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Link de recuperação inválido ou já utilizado."));
+
+        if (prt.getExpiresAt().isBefore(LocalDateTime.now())) {
+            passwordResetTokenRepository.delete(prt);
+            throw new RuntimeException("O link de recuperação expirou. Solicita um novo.");
+        }
+
+        User user = userRepository.findByEmail(prt.getEmail())
+                .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setTokenValidFrom(LocalDateTime.now());
+        userRepository.save(user);
+
+        passwordResetTokenRepository.delete(prt);
+        refreshTokenService.revokeAllForUser(user.getId());
+    }
+
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void purgeExpiredPendingRegistrations() {
         pendingRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        passwordResetTokenRepository.deleteExpired(LocalDateTime.now());
     }
 
     @Transactional(readOnly = true)
