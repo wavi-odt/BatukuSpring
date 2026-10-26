@@ -64,6 +64,7 @@ public class S3FileStorageService implements FileStorageService {
                     .key(key)
                     .contentType(file.getContentType())
                     .contentLength(file.getSize())
+                    .cacheControl("public, max-age=604800")
                     .build();
             s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
         } catch (IOException e) {
