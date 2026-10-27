@@ -58,8 +58,8 @@ class TrackServiceTest {
     @Test
     @DisplayName("listAllWithLikes devolve lista com likeCount correto")
     void listAllWithLikes() {
-        when(trackRepository.findAll()).thenReturn(List.of(track));
-        when(likeRepository.countByTrackId(5L)).thenReturn(7L);
+        when(trackRepository.findAllWithRelations()).thenReturn(List.of(track));
+        when(likeRepository.countGroupedByTrack()).thenReturn(List.<Object[]>of(new Object[]{5L, 7L}));
 
         List<TrackResponse> result = service.listAllWithLikes();
 

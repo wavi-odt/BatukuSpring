@@ -80,6 +80,7 @@ class MarketplaceServiceTest {
         when(userRepository.findById(2L)).thenReturn(Optional.of(produtor));
         when(userRepository.findById(9L)).thenReturn(Optional.of(admin));
         when(beatRepository.findById(5L)).thenReturn(Optional.of(beat));
+        when(beatRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(beat));
         when(purchaseRepository.existsByUserIdAndBeatId(1L, 5L)).thenReturn(false);
         when(beatRepository.save(any(Beat.class))).thenAnswer(inv -> inv.getArgument(0));
     }

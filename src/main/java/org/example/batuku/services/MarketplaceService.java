@@ -194,7 +194,7 @@ public class MarketplaceService {
     public void comprar(Long userId, PurchaseRequest req) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilizador não encontrado."));
-        Beat beat = beatRepository.findById(req.getBeatId())
+        Beat beat = beatRepository.findByIdForUpdate(req.getBeatId())
                 .orElseThrow(() -> new RuntimeException("Beat não encontrado."));
 
         if (beat.isSoldExclusively()) {
@@ -219,10 +219,10 @@ public class MarketplaceService {
         purchaseRepository.save(purchase);
 
         beat.setSales(beat.getSales() + 1);
-        beatRepository.save(beat);
         if ("EXCLUSIVE".equals(licenseType)) {
             beat.setSoldExclusively(true);
         }
+        beatRepository.save(beat);
 
         String buyerName = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getUsername();
         notificationService.notify(
