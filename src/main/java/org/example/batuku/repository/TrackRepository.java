@@ -19,6 +19,6 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     List<Track> findTop20ByArtistProfileIdInAndIsPublishedTrueOrderByCreatedAtDesc(List<Long> artistProfileIds);
     List<Track> findByGenreIdAndIsPublishedTrueOrderByCreatedAtDesc(Long genreId);
 
-    @Query("SELECT t FROM Track t JOIN FETCH t.artistProfile LEFT JOIN FETCH t.genre")
+    @Query("SELECT t FROM Track t JOIN FETCH t.artistProfile LEFT JOIN FETCH t.genre WHERE t.isPublished = true")
     List<Track> findAllWithRelations();
 }

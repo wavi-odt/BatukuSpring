@@ -108,12 +108,16 @@ public class TrackController {
     }
 
     @GetMapping("/artist/{artistProfileId}")
-    public List<TrackResponse> listByArtist(@PathVariable Long artistProfileId) {
-        return trackService.listByArtistWithStats(artistProfileId);
+    public List<TrackResponse> listByArtist(@PathVariable Long artistProfileId,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
+        User viewer = userDetails != null ? jwtUserDetailsService.loadUserEntity(userDetails.getUsername()) : null;
+        return trackService.listByArtistWithStats(artistProfileId, viewer);
     }
 
     @GetMapping("/{id}")
-    public TrackResponse getTrack(@PathVariable Long id) {
-        return trackService.getTrackWithStats(id);
+    public TrackResponse getTrack(@PathVariable Long id,
+                                  @AuthenticationPrincipal UserDetails userDetails) {
+        User viewer = userDetails != null ? jwtUserDetailsService.loadUserEntity(userDetails.getUsername()) : null;
+        return trackService.getTrackWithStats(id, viewer);
     }
 }

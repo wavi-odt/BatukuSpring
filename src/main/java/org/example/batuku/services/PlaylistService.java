@@ -110,11 +110,15 @@ public class PlaylistService {
         Playlist playlist = playlistRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Playlist não encontrada."));
 
+        boolean isOwner = playlist.getUser().getId().equals(user.getId());
+        if (!isOwner && !playlist.isPublic()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Playlist não encontrada.");
+        }
+
         List<TrackResponse> tracks = playlistTrackRepository.findByPlaylistIdOrderByPosition(id).stream()
                 .map(pt -> TrackResponse.from(pt.getTrack(), likeRepository.countByTrackId(pt.getTrack().getId())))
                 .toList();
 
-        boolean isOwner = playlist.getUser().getId().equals(user.getId());
         boolean isSaved = !isOwner && savedPlaylistRepository.existsByUserIdAndPlaylistId(user.getId(), id);
         return PlaylistDetailResponse.from(playlist, tracks, isOwner, isSaved);
     }

@@ -24,10 +24,12 @@ import org.example.batuku.storage.FileCategory;
 import org.example.batuku.storage.FileStorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -292,8 +294,9 @@ public class TrackService {
     }
 
     @Transactional(readOnly = true)
-    public List<TrackResponse> listByArtistWithStats(Long artistProfileId) {
+    public List<TrackResponse> listByArtistWithStats(Long artistProfileId, User viewer) {
         return trackRepository.findByArtistProfileId(artistProfileId).stream()
+                .filter(t -> t.isPublished() || isOwnerOf(t, viewer))
                 .map(t -> {
                     TrackResponse r = TrackResponse.from(t,
                             likeRepository.countByTrackId(t.getId()),
@@ -306,14 +309,24 @@ public class TrackService {
     }
 
     @Transactional(readOnly = true)
-    public TrackResponse getTrackWithStats(Long id) {
-        Track t = trackRepository.findById(id).orElseThrow();
+    public TrackResponse getTrackWithStats(Long id, User viewer) {
+        Track t = trackRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Faixa não encontrada."));
+        if (!t.isPublished() && !isOwnerOf(t, viewer)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Faixa não encontrada.");
+        }
         TrackResponse r = TrackResponse.from(t,
                 likeRepository.countByTrackId(t.getId()),
                 playRepository.countByTrackId(t.getId()),
                 commentRepository.countByTrackId(t.getId()));
         r.setBelongsToRelease(albumTrackRepository.existsByTrackId(t.getId()));
         return r;
+    }
+
+    private boolean isOwnerOf(Track t, User viewer) {
+        return viewer != null
+                && t.getArtistProfile().getUser() != null
+                && t.getArtistProfile().getUser().getId().equals(viewer.getId());
     }
 
     @Transactional(readOnly = true)

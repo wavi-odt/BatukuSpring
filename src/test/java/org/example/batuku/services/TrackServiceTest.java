@@ -18,7 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.NoSuchElementException;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -53,6 +53,7 @@ class TrackServiceTest {
         profile = TestData.artistProfile(10L, artist);
         track   = TestData.track(5L, profile);
         track.setSource(Track.TrackSource.UPLOAD);
+        track.setPublished(true);
     }
 
     @Test
@@ -76,7 +77,7 @@ class TrackServiceTest {
         when(commentRepository.countByTrackId(5L)).thenReturn(2L);
         when(albumTrackRepository.existsByTrackId(5L)).thenReturn(false);
 
-        List<TrackResponse> result = service.listByArtistWithStats(10L);
+        List<TrackResponse> result = service.listByArtistWithStats(10L, null);
 
         assertEquals(1, result.size());
         TrackResponse r = result.get(0);
@@ -95,7 +96,7 @@ class TrackServiceTest {
         when(commentRepository.countByTrackId(5L)).thenReturn(0L);
         when(albumTrackRepository.existsByTrackId(5L)).thenReturn(true);
 
-        List<TrackResponse> result = service.listByArtistWithStats(10L);
+        List<TrackResponse> result = service.listByArtistWithStats(10L, null);
 
         assertTrue(result.get(0).isBelongsToRelease());
     }
@@ -109,7 +110,7 @@ class TrackServiceTest {
         when(commentRepository.countByTrackId(5L)).thenReturn(1L);
         when(albumTrackRepository.existsByTrackId(5L)).thenReturn(false);
 
-        TrackResponse r = service.getTrackWithStats(5L);
+        TrackResponse r = service.getTrackWithStats(5L, null);
 
         assertEquals(5L, r.getId());
         assertEquals(4L, r.getLikeCount());
@@ -122,7 +123,7 @@ class TrackServiceTest {
     @DisplayName("getTrackWithStats lança exceção quando faixa não existe")
     void getTrackWithStatsNaoExiste() {
         when(trackRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThrows(NoSuchElementException.class, () -> service.getTrackWithStats(99L));
+        assertThrows(ResponseStatusException.class, () -> service.getTrackWithStats(99L, null));
     }
 
     @Test
