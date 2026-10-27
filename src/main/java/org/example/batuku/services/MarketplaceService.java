@@ -220,6 +220,9 @@ public class MarketplaceService {
 
         beat.setSales(beat.getSales() + 1);
         beatRepository.save(beat);
+        if ("EXCLUSIVE".equals(licenseType)) {
+            beat.setSoldExclusively(true);
+        }
 
         String buyerName = (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getUsername();
         notificationService.notify(

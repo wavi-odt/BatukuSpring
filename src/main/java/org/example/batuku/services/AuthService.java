@@ -20,8 +20,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.Set;
 import java.util.UUID;
 
@@ -215,13 +219,14 @@ public class AuthService {
         passwordResetTokenRepository.deleteByEmail(normalizedEmail);
 
         userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
+            String rawToken = UUID.randomUUID().toString();
             PasswordResetToken prt = new PasswordResetToken();
-            prt.setToken(UUID.randomUUID().toString());
+            prt.setToken(sha256Hex(rawToken));
             prt.setEmail(normalizedEmail);
             prt.setExpiresAt(LocalDateTime.now().plusHours(1));
             passwordResetTokenRepository.save(prt);
 
-            String resetUrl = appBaseUrl + "/reset-password?token=" + prt.getToken();
+            String resetUrl = appBaseUrl + "/reset-password?token=" + rawToken;
             emailService.sendPasswordResetEmail(normalizedEmail, user.getName(), resetUrl);
         });
     }
@@ -231,12 +236,16 @@ public class AuthService {
      */
     @Transactional
     public void resetPassword(String token, String newPassword) {
-        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token)
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(sha256Hex(token))
                 .orElseThrow(() -> new RuntimeException("Link de recuperação inválido ou já utilizado."));
 
         if (prt.getExpiresAt().isBefore(LocalDateTime.now())) {
             passwordResetTokenRepository.delete(prt);
             throw new RuntimeException("O link de recuperação expirou. Solicita um novo.");
+        }
+
+        if (newPassword.length() < 8) {
+            throw new RuntimeException("A password deve ter pelo menos 8 caracteres.");
         }
 
         User user = userRepository.findByEmail(prt.getEmail())
@@ -248,6 +257,16 @@ public class AuthService {
 
         passwordResetTokenRepository.delete(prt);
         refreshTokenService.revokeAllForUser(user.getId());
+    }
+
+    private static String sha256Hex(String input) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(input.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     @Scheduled(cron = "0 0 3 * * *")

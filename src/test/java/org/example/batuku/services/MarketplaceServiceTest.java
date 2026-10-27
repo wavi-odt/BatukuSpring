@@ -113,6 +113,7 @@ class MarketplaceServiceTest {
         assertEquals(licencaGuardada, p.getLicenseType());
         assertEquals(comprador, p.getUser());
         assertEquals(beat, p.getBeat());
+        assertEquals("EXCLUSIVE".equals(licencaGuardada), beat.isSoldExclusively());
     }
 
     @Test
