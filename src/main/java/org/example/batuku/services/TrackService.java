@@ -215,7 +215,7 @@ public class TrackService {
         track.setDurationMs(durationMs);
         track.setGenre(genre);
         track.setVisibility(Track.Visibility.PUBLIC);
-        track.setPublished(true);
+        track.setPublished(false);
         return trackRepository.save(track);
     }
 
@@ -255,6 +255,10 @@ public class TrackService {
             trackRepository.save(track);
         }
         return track;
+    }
+
+    void save(Track track) {
+        trackRepository.save(track);
     }
 
     /** Actualiza só o coverUrl de uma track, chamado pelo AlbumService em cascade. */

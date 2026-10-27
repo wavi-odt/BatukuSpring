@@ -84,7 +84,6 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/tracks", "/api/tracks/artist/**", "/api/tracks/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/follows/followers/**", "/api/follows/following/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/**", "/api/artists/**", "/api/search").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/discord/events").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/shared/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/shared-project/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/marketplace/beats", "/api/marketplace/beats/featured",

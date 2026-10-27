@@ -113,6 +113,13 @@ public class AlbumService {
         return toResponse(album);
     }
 
+    private void publishAlbumTracks(Long albumId) {
+        albumTrackRepository.findByAlbumIdOrderByPosition(albumId).forEach(at -> {
+            at.getTrack().setPublished(true);
+            trackService.save(at.getTrack());
+        });
+    }
+
     private Album getOwnedAlbum(Long albumId, User user) {
         Album album = albumRepository.findById(albumId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lançamento não encontrado."));
@@ -146,8 +153,13 @@ public class AlbumService {
         if (scheduledAt != null && scheduledAt.isAfter(LocalDateTime.now())) {
             album.setScheduledAt(scheduledAt);
             album.setStatus(Album.Status.SCHEDULED);
+            albumTrackRepository.findByAlbumIdOrderByPosition(albumId).forEach(at -> {
+                at.getTrack().setScheduledAt(scheduledAt);
+                trackService.save(at.getTrack());
+            });
         } else {
             album.setStatus(Album.Status.PUBLISHED);
+            publishAlbumTracks(albumId);
         }
         albumRepository.save(album);
         return toResponse(album);
@@ -160,6 +172,7 @@ public class AlbumService {
         for (Album a : due) {
             a.setStatus(Album.Status.PUBLISHED);
             albumRepository.save(a);
+            publishAlbumTracks(a.getId());
             log.info("Auto-publicado lançamento agendado: id={} title={}", a.getId(), a.getTitle());
         }
     }
