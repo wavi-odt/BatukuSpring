@@ -32,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -281,8 +282,12 @@ public class TrackService {
 
     @Transactional(readOnly = true)
     public List<TrackResponse> listAllWithLikes() {
-        return trackRepository.findAll().stream()
-                .map(t -> TrackResponse.from(t, likeRepository.countByTrackId(t.getId())))
+        Map<Long, Long> likes = new HashMap<>();
+        for (Object[] row : likeRepository.countGroupedByTrack()) {
+            likes.put((Long) row[0], (Long) row[1]);
+        }
+        return trackRepository.findAllWithRelations().stream()
+                .map(t -> TrackResponse.from(t, likes.getOrDefault(t.getId(), 0L)))
                 .toList();
     }
 

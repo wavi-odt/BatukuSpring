@@ -2,6 +2,7 @@ package org.example.batuku.repository;
 
 import org.example.batuku.domain.Track;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +18,7 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     List<Track> findByScheduledAtBeforeAndIsPublishedFalse(LocalDateTime cutoff);
     List<Track> findTop20ByArtistProfileIdInAndIsPublishedTrueOrderByCreatedAtDesc(List<Long> artistProfileIds);
     List<Track> findByGenreIdAndIsPublishedTrueOrderByCreatedAtDesc(Long genreId);
+
+    @Query("SELECT t FROM Track t JOIN FETCH t.artistProfile LEFT JOIN FETCH t.genre")
+    List<Track> findAllWithRelations();
 }

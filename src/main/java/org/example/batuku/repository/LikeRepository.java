@@ -27,6 +27,9 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
                                                          @Param("from") LocalDateTime from,
                                                          @Param("to") LocalDateTime to);
 
+    @Query("SELECT l.track.id, COUNT(l) FROM Like l GROUP BY l.track.id")
+    List<Object[]> countGroupedByTrack();
+
     @Query(value = "SELECT DATE(l.created_at), COUNT(*) FROM likes l " +
                    "INNER JOIN tracks t ON l.track_id = t.id " +
                    "WHERE t.artist_profile_id = :artistId AND l.created_at >= :since " +
