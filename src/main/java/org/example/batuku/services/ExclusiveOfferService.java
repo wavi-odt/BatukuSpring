@@ -134,7 +134,7 @@ public class ExclusiveOfferService {
                     offer.getId(), "A tua proposta para \"" + beat.getTitle() + "\" foi aceite!");
         } else {
             notificationService.notify(offer.getFan(), Notification.NotificationType.OFFER_REJECTED,
-                    offer.getId(), "A tua proposta para \"" + beat.getTitle() + "\" foi recusada.");
+                    offer.getId(), "A tua proposta para \"" + offer.getBeat().getTitle() + "\" foi recusada.");
         }
 
         return toDto(offer);
