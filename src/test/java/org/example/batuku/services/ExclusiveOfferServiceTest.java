@@ -114,7 +114,7 @@ class ExclusiveOfferServiceTest {
         ExclusiveOffer offer = new ExclusiveOffer();
         offer.setFan(fan);
         offer.setBeat(beat);
-        when(offerRepository.findById(1L)).thenReturn(Optional.of(offer));
+        when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
 
         OfferReplyRequest req = new OfferReplyRequest();
         req.setStatus("ACCEPTED");
@@ -129,7 +129,7 @@ class ExclusiveOfferServiceTest {
         offer.setFan(fan);
         offer.setBeat(beat);
         offer.setStatus("ACCEPTED");
-        when(offerRepository.findById(1L)).thenReturn(Optional.of(offer));
+        when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
 
         OfferReplyRequest req = new OfferReplyRequest();
         req.setStatus("REJECTED");
@@ -143,7 +143,7 @@ class ExclusiveOfferServiceTest {
         ExclusiveOffer offer = new ExclusiveOffer();
         offer.setFan(fan);
         offer.setBeat(beat);
-        when(offerRepository.findById(1L)).thenReturn(Optional.of(offer));
+        when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
 
         OfferReplyRequest req = new OfferReplyRequest();
         req.setStatus("UNKNOWN");
