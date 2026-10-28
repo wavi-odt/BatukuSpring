@@ -86,7 +86,7 @@ public class ExclusiveOfferService {
 
     @Transactional
     public OfferResponse replyToOffer(Long id, User producer, OfferReplyRequest req) {
-        ExclusiveOffer offer = offerRepository.findById(id)
+        ExclusiveOffer offer = offerRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new RuntimeException("Proposta não encontrada."));
 
         if (!offer.getBeat().getProducer().getId().equals(producer.getId())) {
@@ -100,15 +100,18 @@ public class ExclusiveOfferService {
         if (!newStatus.equals("ACCEPTED") && !newStatus.equals("REJECTED")) {
             throw new IllegalArgumentException("Estado inválido.");
         }
+        if (newStatus.equals("ACCEPTED") && offer.getBeat().isSoldExclusively()) {
+            throw new IllegalStateException("Este beat já foi vendido em exclusivo.");
+        }
 
         offer.setStatus(newStatus);
         offer.setProducerReply(req.getReply());
         offer.setRepliedAt(LocalDateTime.now());
         offerRepository.save(offer);
 
-        Beat beat = offer.getBeat();
-
         if (newStatus.equals("ACCEPTED")) {
+            Beat beat = beatRepository.findByIdForUpdate(offer.getBeat().getId())
+                    .orElseThrow(() -> new RuntimeException("Beat não encontrado."));
             Purchase purchase = new Purchase();
             purchase.setUser(offer.getFan());
             purchase.setBeat(beat);
