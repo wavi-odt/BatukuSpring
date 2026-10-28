@@ -2,6 +2,7 @@ package org.example.batuku.services;
 
 import org.example.batuku.TestData;
 import org.example.batuku.domain.Beat;
+import org.example.batuku.domain.Purchase;
 import org.example.batuku.domain.ExclusiveOffer;
 import org.example.batuku.domain.User;
 import org.example.batuku.dto.OfferReplyRequest;
@@ -149,6 +150,23 @@ class ExclusiveOfferServiceTest {
         req.setStatus("UNKNOWN");
 
         assertThrows(IllegalArgumentException.class, () -> service.replyToOffer(1L, producer, req));
+    }
+
+    @Test
+    @DisplayName("replyToOffer recusa aceitar quando o beat já foi vendido em exclusivo")
+    void replyToOfferBeatJaVendido() {
+        beat.setSoldExclusively(true);
+        ExclusiveOffer offer = new ExclusiveOffer();
+        offer.setFan(fan);
+        offer.setBeat(beat);
+        when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
+        when(beatRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(beat));
+
+        OfferReplyRequest req = new OfferReplyRequest();
+        req.setStatus("ACCEPTED");
+
+        assertThrows(IllegalStateException.class, () -> service.replyToOffer(1L, producer, req));
+        verify(purchaseRepository, never()).save(any(Purchase.class));
     }
 
     @Test
