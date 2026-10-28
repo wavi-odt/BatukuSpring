@@ -160,7 +160,6 @@ class ExclusiveOfferServiceTest {
         offer.setFan(fan);
         offer.setBeat(beat);
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
-        when(beatRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(beat));
 
         OfferReplyRequest req = new OfferReplyRequest();
         req.setStatus("ACCEPTED");
