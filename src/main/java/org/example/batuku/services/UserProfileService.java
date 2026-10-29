@@ -86,8 +86,10 @@ public class UserProfileService {
                     : followRepository.existsByFollowerIdAndFolloweeId(viewer.getId(), id);
         }
 
-        int  points = userPointsRepository.findByUserId(id).map(up -> up.getTotalPoints()).orElse(0);
-        long rank   = userPointsRepository.findByUserId(id).isPresent()
+        var  userPoints = userPointsRepository.findByUserId(id);
+        int  points = userPoints.map(up -> up.getTotalPoints()).orElse(0);
+        int  level  = userPoints.map(up -> up.getLevel()).orElse(1);
+        long rank   = userPoints.isPresent()
                 ? userPointsRepository.findRankByUserId(id) : 0L;
 
         var earnedBadges = userBadgeRepository.findByUserId(id);
@@ -117,7 +119,7 @@ public class UserProfileService {
                 followers,
                 following,
                 isFollowing,
-                0,
+                level,
                 artistProfileId,
                 points,
                 rank,
