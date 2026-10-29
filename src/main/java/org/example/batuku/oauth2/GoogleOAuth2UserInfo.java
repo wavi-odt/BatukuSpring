@@ -25,6 +25,9 @@ public class GoogleOAuth2UserInfo extends OAuth2UserInfo {
 
     @Override
     public String getAvatarUrl() {
-        return (String) attributes.get("picture");
+        String picture = (String) attributes.get("picture");
+        if (picture == null) return null;
+        // Google returns ~96px by default (=s96-c); request a larger version
+        return picture.replaceAll("=s\\d+-c$", "=s400-c");
     }
 }

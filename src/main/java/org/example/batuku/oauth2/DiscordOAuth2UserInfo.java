@@ -33,6 +33,6 @@ public class DiscordOAuth2UserInfo extends OAuth2UserInfo {
         String id = getId();
         String avatar = (String) attributes.get("avatar");
         if (id == null || avatar == null) return null;
-        return "https://cdn.discordapp.com/avatars/" + id + "/" + avatar + ".png?size=256";
+        return "https://cdn.discordapp.com/avatars/" + id + "/" + avatar + ".png?size=512";
     }
 }
