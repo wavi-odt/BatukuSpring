@@ -560,7 +560,7 @@ public class GamificationService {
         if (!primeiro.equals(hoje) && !primeiro.equals(hoje.minusDays(1))) return 0;
         int streak = 0;
         for (java.sql.Date d : datas) {
-            if (d.toLocalDate().equals(hoje.minusDays(streak))) streak++;
+            if (d.toLocalDate().equals(primeiro.minusDays(streak))) streak++;
             else break;
         }
         return streak;
