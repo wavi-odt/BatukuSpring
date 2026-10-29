@@ -210,7 +210,7 @@ public class SpotifyClient {
             Integer popularity
     ) {
         public String imageUrl() {
-            return (images != null && images.length > 0) ? images[0].url() : null;
+            return SpotifyImage.pick(images);
         }
 
         public String thumbnailUrl() {
@@ -223,7 +223,29 @@ public class SpotifyClient {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record SpotifyImage(String url) {}
+    public record SpotifyImage(String url, Integer width, Integer height) {
+
+        /** Largura mínima que nos interessa: as imagens do Spotify vêm em 640, ~300 e 64/160 px. */
+        private static final int PREFERRED_MIN_WIDTH = 300;
+
+        /**
+         * Escolhe a mais pequena das imagens com largura suficiente para os cartões da app,
+         * em vez de ir sempre buscar a maior (640 px). Se o Spotify não indicar larguras,
+         * devolve a primeira, como antes.
+         */
+        static String pick(SpotifyImage[] images) {
+            if (images == null || images.length == 0) return null;
+            SpotifyImage best = null;
+            for (SpotifyImage img : images) {
+                if (img == null || img.url() == null || img.width() == null) continue;
+                if (img.width() >= PREFERRED_MIN_WIDTH
+                        && (best == null || img.width() < best.width())) {
+                    best = img;
+                }
+            }
+            return best != null ? best.url() : images[0].url();
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SpotifyExternalUrls(String spotify) {}
@@ -254,7 +276,7 @@ public class SpotifyClient {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SpotifyAlbum(SpotifyImage[] images) {
         public String coverUrl() {
-            return (images != null && images.length > 0) ? images[0].url() : null;
+            return SpotifyImage.pick(images);
         }
     }
 
