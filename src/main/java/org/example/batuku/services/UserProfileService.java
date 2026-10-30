@@ -70,6 +70,7 @@ public class UserProfileService {
     @Transactional(readOnly = true)
     public UserDetailResponse getUserDetail(Long id, User viewer) {
         User user = userRepository.findById(id).orElseThrow();
+        if (user.getUserRole() == User.UserRole.ADMIN) throw new java.util.NoSuchElementException();
         Long artistProfileId = artistProfileRepository.findByUserId(id)
                 .map(a -> a.getId()).orElse(null);
 

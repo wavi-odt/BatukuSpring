@@ -49,7 +49,10 @@ public class SearchService {
                 .collect(Collectors.toMap(a -> a.getUser().getId(), a -> a)));
 
         List<User> rawUsers = userRepository
-                .findTop5ByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(term, term);
+                .findTop5ByNameContainingIgnoreCaseOrUsernameContainingIgnoreCase(term, term)
+                .stream()
+                .filter(u -> u.getUserRole() != User.UserRole.ADMIN)
+                .toList();
 
         Set<Long> rawUserIds = rawUsers.stream().map(User::getId).collect(Collectors.toSet());
 
