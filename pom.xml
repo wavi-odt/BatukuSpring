@@ -15,7 +15,7 @@
     <artifactId>batuku</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>batuku</name>
-    <description>Plataforma Batuku — Backend</description>
+    <description>Plataforma Batuku - Backend</description>
 
     <properties>
         <java.version>17</java.version>
@@ -74,7 +74,7 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- JWT — igual ao do projeto do professor -->
+        <!-- JWT (json web token)) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt</artifactId>
@@ -108,19 +108,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
-
-        <!-- Discord JDA (bot + events) -->
-        <dependency>
-            <groupId>net.dv8tion</groupId>
-            <artifactId>JDA</artifactId>
-            <version>5.2.1</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>club.minnced</groupId>
-                    <artifactId>opus-java</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <!-- Email (JavaMailSender — SMTP) -->

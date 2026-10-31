@@ -56,7 +56,7 @@ class PlaylistServiceTest {
     }
 
     @Test
-    @DisplayName("Outro utilizador não vê uma playlist privada — recebe 404")
+    @DisplayName("Outro utilizador não vê uma playlist privada, recebe 404")
     void outroNaoVePlaylistPrivada() {
         when(playlistRepository.findById(10L)).thenReturn(Optional.of(playlistPrivada));
 
